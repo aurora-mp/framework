@@ -2,10 +2,5 @@ packages:
   - docs
   - packages/*
   - packages/platforms/ragemp/**
+  - packages/platforms/omp/**
   - packages/platforms/fivem/**
-  - armonia/**
-
-onlyBuiltDependencies:
-  - '@swc/core'
-  - esbuild
-  - unrs-resolver

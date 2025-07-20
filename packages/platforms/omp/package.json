@@ -1,0 +1,34 @@
+{
+    "name": "@aurora-mp/platform-omp",
+    "version": "0.0.1-alpha.6",
+    "description": "Aurora platform driver implementation for OMP (open.mp) server-side runtime.",
+    "license": "MIT",
+    "author": "Aurora Team",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/aurora-mp/framework.git",
+        "directory": "packages/platforms/omp"
+    },
+    "publishConfig": {
+        "access": "public",
+        "registry": "https://registry.npmjs.org/"
+    },
+    "scripts": {
+        "build": "tsup"
+    },
+    "devDependencies": {
+        "@types/node": "^24.0.4",
+        "tsup": "^8.5.0"
+    },
+    "dependencies": {
+        "@aurora-mp/core": "workspace:*",
+        "@aurora-mp/server": "workspace:*",
+        "@omp-node/core": "^0.3.2"
+    }
+}
