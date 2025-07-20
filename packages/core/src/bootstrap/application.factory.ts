@@ -6,6 +6,7 @@ import {
     OnAppStarted,
     OnAppShutdown,
     IConfigService,
+    AuroraPlugin,
 } from '../interfaces';
 import {
     MODULE_METADATA_KEY,
@@ -42,6 +43,8 @@ export class ApplicationFactory {
     private readonly flowHandler: ControllerFlowHandler;
     private readonly eventBinder: EventBinder;
     private readonly rpcBinder: RpcBinder;
+    private readonly plugins: AuroraPlugin[] = [];
+
     private logger: ILogger = console;
     private config?: IConfigService;
 
@@ -63,6 +66,7 @@ export class ApplicationFactory {
             start: this.start.bind(this),
             get: this.get.bind(this),
             close: this.close.bind(this),
+            usePlugins: this.usePlugins.bind(this),
         };
     }
 
@@ -72,10 +76,20 @@ export class ApplicationFactory {
      * @param platformDriver The platform driver for this runtime
      * @returns A Promise resolving to the IApplication instance
      */
-    public static async create(rootModule: Type, platformDriver: IPlatformDriver): Promise<IApplication> {
+    public static async create(
+        rootModule: Type,
+        platformDriver: IPlatformDriver,
+        plugins: AuroraPlugin[] = [],
+    ): Promise<IApplication> {
         const factory = new ApplicationFactory(platformDriver);
+        factory.usePlugins(...plugins);
         await factory.initialize(rootModule);
         return factory.applicationRef;
+    }
+
+    public usePlugins(...plugins: AuroraPlugin[]): this {
+        this.plugins.push(...plugins);
+        return this;
     }
 
     /**
@@ -93,6 +107,13 @@ export class ApplicationFactory {
         // Binding controller events.
         this.bindControllerEvents();
         this.bindControllerRpcs();
+
+        // Plugin lifecycle
+        for (const plugin of this.plugins) {
+            if (plugin.onBootstrap) {
+                await plugin.onBootstrap(this.applicationRef);
+            }
+        }
 
         // Call lifecycle hooks and register shutdown listeners.
         await this.callLifecycle('onAppStarted');
@@ -171,6 +192,14 @@ export class ApplicationFactory {
         // Resolve and instantiate core services needed by the factory itself.
         const rootModule = this.moduleWrappers.get(rootModuleType)!;
         await this.initializeCoreServices(rootModule);
+
+        // Plugin lifecycle
+        console.dir(this.plugins);
+        for (const plugin of this.plugins) {
+            if (plugin.onInit) {
+                await plugin.onInit(this.applicationRef);
+            }
+        }
 
         if (this.debug) {
             this.logModulesTree();

@@ -1,4 +1,4 @@
-import { ApplicationFactory, Module, Type } from '@aurora-mp/core';
+import { ApplicationFactory, AuroraPlugin, Module, Type } from '@aurora-mp/core';
 import { ServerModule } from '@aurora-mp/server';
 import { RageServerDriver } from './driver';
 import { PlatformModule } from './platform.module';
@@ -10,7 +10,7 @@ import { PlatformModule } from './platform.module';
  * @param rootModule The root module of the application.
  * @returns A promise that resolves to the initialized application instance.
  */
-export function createRageApplication(rootModule: Type) {
+export function createRageApplication(rootModule: Type, plugins: AuroraPlugin[] = []) {
     /**
      * We dynamically create a new root module that imports both
      * our internal platform module and the user's application module.
@@ -23,5 +23,5 @@ export function createRageApplication(rootModule: Type) {
     class InternalRootModule {}
 
     const driver = new RageServerDriver();
-    return ApplicationFactory.create(InternalRootModule, driver);
+    return ApplicationFactory.create(InternalRootModule, driver, plugins);
 }

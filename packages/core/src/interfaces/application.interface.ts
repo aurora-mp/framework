@@ -1,4 +1,5 @@
 import { Token } from '../types';
+import { AuroraPlugin } from './plugin.interface';
 
 /**
  * Represents a bootstrapped Aurora application instance,
@@ -33,4 +34,6 @@ export interface IApplication {
      * @returns A promise that resolves once shutdown is complete.
      */
     close(): Promise<void>;
+
+    usePlugins(...plugins: AuroraPlugin[]): this;
 }

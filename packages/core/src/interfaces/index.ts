@@ -9,4 +9,5 @@ export * from './lifecycle-hooks.interface';
 export * from './logger.interface';
 export * from './method-parameter.interface';
 export * from './platform-driver.interface';
+export * from './plugin.interface';
 export * from './webview.interface';
