@@ -10,6 +10,8 @@ class RageWebViewWrapper implements IWebView {
         this.webview.call(event, ...args);
     }
 
+    public focus() {}
+
     public destroy(): void {
         this.webview.destroy();
     }
@@ -45,21 +47,24 @@ export class RageClientDriver implements IPlatformDriver {
         id: string | number,
         url: string,
         focused: boolean = false,
-        hidden: boolean = false,
+        _hidden: boolean = false,
     ): IWebView {
         const webview = mp.browsers.new(url);
         const handle = new RageWebViewWrapper(id, webview);
 
         this.webviews.set(id, handle);
 
-        if (focused) {
-            mp.gui.cursor.visible = true;
-            mp.gui.cursor.show(true, true);
-        }
+        mp.events.add('browserDomReady', () => {
+            if (focused) {
+                mp.gui.cursor.visible = true;
+                mp.gui.cursor.show(true, true);
+            }
+        });
 
-        if (hidden) {
+        // TODO
+        /*if (hidden) {
             webview.active = !hidden;
-        }
+        }*/
 
         return handle;
     }

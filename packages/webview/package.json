@@ -1,6 +1,6 @@
 {
     "name": "@aurora-mp/webview",
-    "version": "0.0.1-alpha.6",
+    "version": "0.0.1-alpha.7",
     "description": "Webview package of the aurora-mp TypeScript framework.",
     "keywords": [
         "aurora-mp",

@@ -1,6 +1,6 @@
 {
     "name": "@aurora-mp/server",
-    "version": "0.0.1-alpha.6",
+    "version": "0.0.1-alpha.7",
     "description": "Server package of the aurora-mp TypeScript framework.",
     "keywords": [
         "aurora-mp",

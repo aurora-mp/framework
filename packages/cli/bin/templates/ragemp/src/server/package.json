@@ -1,6 +1,6 @@
 {
     "name": "my-ragemp-client-package",
-    "version": "0.0.1-alpha.6",
+    "version": "0.0.1-alpha.7",
     "description": "RAGE Multiplayer client",
     "main": "build/index.js",
     "scripts": {

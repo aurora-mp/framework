@@ -55,3 +55,5 @@ Thumbs.db
 # Tests (RAGE:MP)
 tests/fivem
 tests/omp
+armonia/*
+aurora-rp/*

@@ -2,6 +2,23 @@
 
 
 
+## [0.0.1-alpha.7](https://github.com/aurora-mp/framework/compare/0.0.1-alpha.6...0.0.1-alpha.7) (2025-07-20)
+
+
+### Features
+
+* add base plugin system. ([3a9ab39](https://github.com/aurora-mp/framework/commit/3a9ab391876f231c6b7424267923e47bf83840ad))
+* **webview:** add off method ([1e3730c](https://github.com/aurora-mp/framework/commit/1e3730c380ba055dc7220b7bbaca10be8eacae3d))
+
+## 0.0.1-alpha.7
+
+### &nbsp;&nbsp;&nbsp;Features
+
+- Add base plugin system. &nbsp;-&nbsp; by **NeekoGta** [<samp>(3a9ab)</samp>](https://github.com/aurora-mp/framework/commit/3a9ab39)
+- **webview**: Add off method &nbsp;-&nbsp; by **Gioele Firicano** [<samp>(1e373)</samp>](https://github.com/aurora-mp/framework/commit/1e3730c)
+
+##### &nbsp;&nbsp;&nbsp;&nbsp;[View changes on GitHub](https://github.com/aurora-mp/framework/compare/0.0.1-alpha.6...0.0.1-alpha.7)
+
 ## [0.0.1-alpha.6](https://github.com/aurora-mp/framework/compare/0.0.1-alpha.5...0.0.1-alpha.6) (2025-07-07)
 
 ## 0.0.1-alpha.6

@@ -1,6 +1,6 @@
 {
     "name": "@aurora-mp/core",
-    "version": "0.0.1-alpha.6",
+    "version": "0.0.1-alpha.7",
     "description": "Core package of the aurora-mp TypeScript framework, providing dependency injection, event handling, and module registration.",
     "keywords": [
         "aurora-mp",
