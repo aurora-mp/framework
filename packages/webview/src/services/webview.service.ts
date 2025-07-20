@@ -17,6 +17,15 @@ export class WebviewService {
         this.platform.on(eventName, listener);
     }
 
+    public off(eventName: string, listener: (...args: any[]) => void): void {
+        if (!this.platform) {
+            console.warn('[Aurora] The current platform driver does not support off.');
+            return;
+        }
+
+        this.platform.off(eventName, listener);
+    }
+
     public onServer(eventName: string, listener: (...args: any[]) => void) {
         if (!this.platform) {
             console.warn('[Aurora] The current platform driver does not support onServer.');
@@ -94,12 +103,14 @@ export class WebviewService {
         if (typeof window !== 'undefined' && (window as any).alt) {
             const alt = (window as any).alt as {
                 on: (event: string, listener: (...args: any[]) => void) => void;
+								off: (event: string, listener: (...args: any[]) => void) => void;
                 emit: (event: string, ...args: any[]) => void;
                 emitServer: (event: string, ...args: any[]) => void;
             };
 
             return {
                 on: (event, listener) => alt.on(event, listener),
+								off: (event, listener) => alt.off(event, listener),
                 onServer: (event, listener) => alt.on(event, listener),
                 emit: (event, ...args) => alt.emit(event, ...args),
                 emitServer: (event, ...args) => alt.emit(event, ...args),
@@ -112,6 +123,7 @@ export class WebviewService {
             return {
                 // subscribe to a normal client event
                 on: (event: string, listener: (...args: any[]) => void) => mp.events.add(event, listener),
+                off: (event: string, listener: (...args: any[]) => void) => mp.events.remove(event, listener),
 
                 // alias for on(), same on the client
                 onServer: (event: string, listener: (...args: any[]) => void) => mp.events.add(event, listener),
