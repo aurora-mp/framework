@@ -7,7 +7,7 @@
     "author": "Aurora Team",
     "type": "module",
     "scripts": {
-        "build": "pnpm -r --workspace-concurrency=1 --filter \"!@aurora-mp/docs\" build",
+        "build": "turbo run build --filter=!@aurora-mp/docs",
         "build:docs": "pnpm run build && pnpm -F @aurora-mp/docs build",
         "test": "jest --verbose",
         "lint": "eslint \"packages/*/src/**/*.ts\"",
@@ -35,9 +35,11 @@
         "ts-jest": "^29.4.0",
         "ts-node": "^10.9.2",
         "tsup": "^8.5.0",
+        "turbo": "^2.5.4",
         "typescript": "^5.8.3"
     },
     "dependencies": {
         "reflect-metadata": "^0.2.2"
-    }
+    },
+    "packageManager": "pnpm@10.12.1"
 }
