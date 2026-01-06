@@ -31,7 +31,7 @@
         "build": "tsup"
     },
     "devDependencies": {
-        "tsup": "^8.5.0"
+        "tsup": "^8.5.1"
     },
     "dependencies": {
         "@aurora-mp/core": "workspace:*"

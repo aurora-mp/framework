@@ -26,19 +26,19 @@
         "start": "node ./bin/run"
     },
     "dependencies": {
-        "@oclif/core": "^4.4.0",
-        "@oclif/plugin-help": "^6.2.29",
-        "@oclif/plugin-not-found": "^3.2.57",
-        "@oclif/plugin-update": "^4.6.45",
-        "@oclif/plugin-warn-if-update-available": "^3.1.42",
+        "@oclif/core": "^4.8.0",
+        "@oclif/plugin-help": "^6.2.36",
+        "@oclif/plugin-not-found": "^3.2.73",
+        "@oclif/plugin-update": "^4.7.16",
+        "@oclif/plugin-warn-if-update-available": "^3.1.53",
         "cpx": "^1.5.0",
-        "fs-extra": "^11.3.0",
-        "inquirer": "^12.6.3",
+        "fs-extra": "^11.3.3",
+        "inquirer": "^13.1.0",
         "kleur": "^4.1.5"
     },
     "devDependencies": {
         "@types/fs-extra": "^11.0.4",
-        "tsup": "^8.5.0"
+        "tsup": "^8.5.1"
     },
     "oclif": {
         "plugins": [

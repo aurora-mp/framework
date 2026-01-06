@@ -23,12 +23,12 @@
         "build": "tsup"
     },
     "devDependencies": {
-        "@types/node": "^24.0.4",
-        "tsup": "^8.5.0"
+        "@types/node": "^25.0.3",
+        "tsup": "^8.5.1"
     },
     "dependencies": {
         "@aurora-mp/core": "workspace:*",
         "@aurora-mp/server": "workspace:*",
-        "@citizenfx/server": "^2.0.14862-1"
+        "@citizenfx/server": "^2.0.23683-1"
     }
 }

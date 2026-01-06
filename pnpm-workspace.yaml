@@ -4,3 +4,10 @@ packages:
   - packages/platforms/ragemp/**
   - packages/platforms/omp/**
   - packages/platforms/fivem/**
+
+onlyBuiltDependencies:
+  - '@swc/core'
+  - core-js
+  - core-js-pure
+  - esbuild
+  - unrs-resolver
