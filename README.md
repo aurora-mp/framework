@@ -20,7 +20,7 @@ Aurora Multiplayer (aurora-mp) is a powerful TypeScript framework that lets you 
 
 ## 🚀 Overview
 
-Aurora Multiplayer abstracts away the differences between popular GTA multiplayer platforms (such as alt:V, FiveM, RAGE MP ...) so you can write one single, strongly-typed codebase that runs on all of them.
+Aurora Multiplayer abstracts away the differences between popular GTA multiplayer platforms (such as FiveM, open.mp, RAGE MP ...) so you can write one single, strongly-typed codebase that runs on all of them.
 With built-in dependency injection, an event-driven architecture, and first-class TypeScript support, you spend less time wrestling with platform quirks and more time crafting immersive multiplayer experiences.
 
 ## 🔑 Key Features
@@ -44,11 +44,10 @@ With built-in dependency injection, an event-driven architecture, and first-clas
 
 Aurora Multiplayer currently provides first-class support for the following multiplayer platforms:
 
-- **alt:V** (WIP) – A modern, high-performance GTA V multiplayer platform with strong TypeScript support.
-  - *Will possibly be removed, not implemented now that it has become Majestic MP*
-- **FiveM** (Not yet) – Community-driven GTA V multiplayer mod with a massive ecosystem (experimental support via plugins).
-- **RAGE MP** (WIP, will be *finalized* soon) – A widely-used modding platform for GTA V, praised for its stability and extensive feature set.
-- **YAMP** - *Maybe?*
+- **FiveM** (WIP) – Community-driven GTA V multiplayer mod with a massive ecosystem (experimental support via plugins).
+- **OMP (open.mp)** (WIP) – A brand new multiplayer mod for Grand Theft Auto: San Andreas that is fully backwards compatible with San Andreas Multiplayer.
+- **RAGE MP** – A widely-used modding platform for GTA V, praised for its stability and extensive feature set.
+- **YAMP** - (Soon)
 - **Other Runtimes** – Easily extendable: create adapters for any GTA multiplayer environment of your choice.
 
 ## 🛠️ Getting Started
