@@ -23,7 +23,16 @@ export interface IWebViewPlatform {
     onClientRpc<TArgs extends unknown[] = any[], TResult = unknown>(
         rpcName: string,
         handler: (...args: TArgs) => Promise<TResult> | TResult,
-    ): void;
+    ): () => void;
 
     invokeServerRpc<TResult = unknown>(rpcName: string, ...args: any[]): Promise<TResult>;
+
+    /**
+     * Register a handler that the client can invoke via IWebView.invoke().
+     * The handler's return value (or thrown error) is sent back as a response.
+     */
+    onRpc<TArgs extends unknown[] = any[], TResult = unknown>(
+        rpcName: string,
+        handler: (...args: TArgs) => Promise<TResult> | TResult,
+    ): void;
 }

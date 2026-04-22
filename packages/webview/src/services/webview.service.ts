@@ -1,4 +1,4 @@
-import { WebViewEvents } from '@aurora-mp/core';
+import { WebViewEvents, WebviewRpcRequest, WebviewRpcResponse } from '@aurora-mp/core';
 import { IWebViewPlatform } from '../interfaces';
 
 export class WebviewService {
@@ -98,27 +98,28 @@ export class WebviewService {
         }
     }
 
+    /**
+     * Register a handler that the client can invoke via WebviewService.invokeWebview().
+     * The return value (or thrown error) is automatically sent back as a response.
+     */
+    public onRpc<TArgs extends unknown[] = any[], TResult = unknown>(
+        rpcName: string,
+        handler: (...args: TArgs) => Promise<TResult> | TResult,
+    ): void {
+        if (!this.platform) {
+            console.warn('[Aurora][RPC] The current platform driver does not support onRpc.');
+            return;
+        }
+
+        this.platform.onRpc(rpcName, handler);
+    }
+
     private getPlatform(): IWebViewPlatform | null {
-        /*// alt:V
-        if (typeof window !== 'undefined' && (window as any).alt) {
-            const alt = (window as any).alt as {
-                on: (event: string, listener: (...args: any[]) => void) => void;
-								off: (event: string, listener: (...args: any[]) => void) => void;
-                emit: (event: string, ...args: any[]) => void;
-                emitServer: (event: string, ...args: any[]) => void;
-            };
-
-            return {
-                on: (event, listener) => alt.on(event, listener),
-								off: (event, listener) => alt.off(event, listener),
-                onServer: (event, listener) => alt.on(event, listener),
-                emit: (event, ...args) => alt.emit(event, ...args),
-                emitServer: (event, ...args) => alt.emit(event, ...args),
-            };
-        }*/
-
         if (typeof window !== 'undefined' && (window as any).mp) {
             const mp = (window as any).mp;
+
+            const rpcHandlers = new Map<string, (...args: any[]) => Promise<unknown> | unknown>();
+            let rpcListenerRegistered = false;
 
             return {
                 // subscribe to a normal client event
@@ -149,14 +150,17 @@ export class WebviewService {
                 onClientRpc: <TArgs extends any[] = any[], TResult = any>(
                     rpcName: string,
                     handler: (...args: TArgs) => Promise<TResult> | TResult,
-                ): void =>
-                    mp.events.addProc(rpcName, async (...args: TArgs) => {
+                ): (() => void) => {
+                    const wrappedHandler = async (...args: TArgs) => {
                         try {
                             return await handler(...args);
                         } catch (err: any) {
                             return { error: err.message ?? String(err) };
                         }
-                    }),
+                    };
+                    mp.events.addProc(rpcName, wrappedHandler);
+                    return () => mp.events.remove(rpcName, wrappedHandler);
+                },
 
                 /**
                  * Sends an RPC to the server and returns a Promise
@@ -164,6 +168,44 @@ export class WebviewService {
                  */
                 invokeServerRpc: <T = any>(rpcName: string, ...args: any[]): Promise<T> =>
                     mp.events.callProc(rpcName, ...args),
+
+                /**
+                 * Register a handler that the client can invoke via IWebView.invoke().
+                 * Uses a single shared listener that demultiplexes by procedure name.
+                 * The response is sent back via INVOKE_WEBVIEW_RPC_RESPONSE.
+                 */
+                onRpc: (rpcName: string, handler: (...args: any[]) => Promise<unknown> | unknown): void => {
+                    rpcHandlers.set(rpcName, handler);
+
+                    if (!rpcListenerRegistered) {
+                        rpcListenerRegistered = true;
+
+                        mp.events.add(WebViewEvents.INVOKE_WEBVIEW_RPC, async (rawPayload: string) => {
+                            let req: WebviewRpcRequest;
+                            try {
+                                req = JSON.parse(rawPayload) as WebviewRpcRequest;
+                            } catch {
+                                console.error('[Aurora][RPC] Failed to parse INVOKE_WEBVIEW_RPC payload:', rawPayload);
+                                return;
+                            }
+
+                            const fn = rpcHandlers.get(req.name);
+                            const resp: WebviewRpcResponse = { id: req.id };
+
+                            try {
+                                if (fn) {
+                                    resp.result = await fn(...req.args);
+                                } else {
+                                    resp.error = `No handler registered for webview RPC "${req.name}"`;
+                                }
+                            } catch (err: any) {
+                                resp.error = err?.message ?? String(err);
+                            }
+
+                            mp.events.call(WebViewEvents.INVOKE_WEBVIEW_RPC_RESPONSE, JSON.stringify(resp));
+                        });
+                    }
+                },
             };
         }
 

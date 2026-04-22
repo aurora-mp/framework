@@ -1,13 +1,36 @@
-import { IPlatformDriver, IWebView, WebViewEvents } from '@aurora-mp/core';
+import { IPlatformDriver, IWebView, WebViewEvents, WebviewRpcRequest, WebviewRpcResponse } from '@aurora-mp/core';
 
 class RageWebViewWrapper implements IWebView {
     constructor(
         public readonly id: string | number,
         private webview: BrowserMp,
+        private pendingWebviewRpcs: Map<string, { resolve: (v: unknown) => void; reject: (r: unknown) => void }>,
+        private generateId: () => string,
     ) {}
 
     public emit(event: string, ...args: unknown[]): void {
         this.webview.call(event, ...args);
+    }
+
+    public invoke<T = unknown>(event: string, ...args: unknown[]): Promise<T> {
+        return new Promise<T>((resolve, reject) => {
+            const id = this.generateId();
+            const request: WebviewRpcRequest = { id, name: event, args };
+
+            const timer = setTimeout(() => {
+                if (this.pendingWebviewRpcs.has(id)) {
+                    this.pendingWebviewRpcs.delete(id);
+                    reject(new Error(`[Aurora][RPC] Webview RPC "${event}" timed out`));
+                }
+            }, 5000);
+
+            this.pendingWebviewRpcs.set(id, {
+                resolve: (v) => { clearTimeout(timer); resolve(v as T); },
+                reject:  (r) => { clearTimeout(timer); reject(r); },
+            });
+
+            this.webview.call(WebViewEvents.INVOKE_WEBVIEW_RPC, JSON.stringify(request));
+        });
     }
 
     public focus() {}
@@ -22,6 +45,8 @@ class RageWebViewWrapper implements IWebView {
  */
 export class RageClientDriver implements IPlatformDriver {
     private webviews = new Map<string | number, RageWebViewWrapper>();
+    private readonly pendingWebviewRpcs = new Map<string, { resolve: (v: unknown) => void; reject: (r: unknown) => void }>();
+    private nextRpcId = 0;
 
     constructor() {
         // Received event from (cef -> client -> server)
@@ -41,6 +66,43 @@ export class RageClientDriver implements IPlatformDriver {
         mp.events.addProc(WebViewEvents.INVOKE_SERVER_RPC, async (rpcName: string, ...args: unknown[]) => {
             return await mp.events.callRemoteProc(rpcName, ...args);
         });
+
+        // Proxy server→webview RPC: server calls player.callProc(INVOKE_WEBVIEW_RPC, webviewId, method, ...args)
+        mp.events.addProc(WebViewEvents.INVOKE_WEBVIEW_RPC, async (_player: PlayerMp, webviewId: string | number, method: string, ...args: unknown[]) => {
+            const webview = this.webviews.get(webviewId);
+            if (!webview) return { error: `WebView "${webviewId}" not found` };
+            try {
+                return await webview.invoke(method, ...args);
+            } catch (err) {
+                return { error: (err as Error).message };
+            }
+        });
+
+        // Resolve or reject pending client->webview RPC calls when the webview responds
+        mp.events.add(WebViewEvents.INVOKE_WEBVIEW_RPC_RESPONSE, (rawPayload: string) => {
+            let resp: WebviewRpcResponse;
+            try {
+                resp = JSON.parse(rawPayload) as WebviewRpcResponse;
+            } catch {
+                console.error('[Aurora][RPC] Failed to parse INVOKE_WEBVIEW_RPC_RESPONSE:', rawPayload);
+                return;
+            }
+
+            const pending = this.pendingWebviewRpcs.get(resp.id);
+            if (!pending) return;
+
+            this.pendingWebviewRpcs.delete(resp.id);
+
+            if (resp.error !== undefined) {
+                pending.reject(new Error(resp.error));
+            } else {
+                pending.resolve(resp.result);
+            }
+        });
+    }
+
+    private generateRpcId(): string {
+        return String(++this.nextRpcId);
     }
 
     public createWebview(
@@ -50,7 +112,12 @@ export class RageClientDriver implements IPlatformDriver {
         _hidden: boolean = false,
     ): IWebView {
         const webview = mp.browsers.new(url);
-        const handle = new RageWebViewWrapper(id, webview);
+        const handle = new RageWebViewWrapper(
+            id,
+            webview,
+            this.pendingWebviewRpcs,
+            () => this.generateRpcId(),
+        );
 
         this.webviews.set(id, handle);
 
