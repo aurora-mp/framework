@@ -12,7 +12,7 @@ export default class Init extends Command {
         template: Flags.string({
             char: 't',
             description: 'Which platform template to use',
-            options: ['altv', 'ragemp'] as const,
+            options: ['ragemp'] as const,
             default: 'ragemp',
         }),
     };
