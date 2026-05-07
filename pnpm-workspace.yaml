@@ -2,8 +2,7 @@ packages:
   - docs
   - packages/*
   - packages/platforms/ragemp/**
-  - packages/platforms/omp/**
-  - packages/platforms/fivem/**
+  #- packages/platforms/fivem/**
 
 onlyBuiltDependencies:
   - '@swc/core'
