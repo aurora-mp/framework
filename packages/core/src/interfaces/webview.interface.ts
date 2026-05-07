@@ -1,9 +1,11 @@
 /**
  * Minimal cross-platform abstraction for a browser-based UI instance.
- * Mirrors common APIs for alt:V, RageMP, etc.
+ * Mirrors common APIs for RageMP, etc.
  */
 export interface IWebView {
     emit(event: string, ...args: unknown[]): void;
+
+    invoke<T = unknown>(event: string, ...args: unknown[]): Promise<T>;
 
     destroy(): void;
 

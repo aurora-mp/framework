@@ -1,0 +1,23 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"composite": true,
+		"types": [
+			"./node_modules/@ragempcommunity/types-server",
+			"./node_modules/@ragempcommunity/types-client"
+		],
+		"baseUrl": ".",
+		"paths": {
+			"@shared/*": [
+				"src/*"
+			]
+		}
+	},
+	"include": [
+		"src/**/*.ts"
+	],
+	"exclude": [
+		"node_modules",
+		"dist"
+	]
+}

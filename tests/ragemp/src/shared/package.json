@@ -1,0 +1,13 @@
+{
+    "name": "@tests/ragemp-shared",
+    "version": "0.0.1-alpha.7",
+    "type": "module",
+    "private": true,
+    "author": "Aurora Team",
+    "license": "MIT",
+    "dependencies": {
+        "@ragempcommunity/types-client": "^2.1.9",
+        "@ragempcommunity/types-server": "^2.1.9"
+    },
+    "devDependencies": {}
+}

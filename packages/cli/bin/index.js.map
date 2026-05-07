@@ -1,1 +1,0 @@
-{"version":3,"sources":["../src/index.ts"],"sourcesContent":["import { run } from '@oclif/core';\r\n\r\nrun().catch(require('@oclif/core/handle'));\r\n"],"mappings":";;;;AAAA,kBAAoB;AAAA,IAEpB,iBAAI,EAAE,MAAM,QAAQ,oBAAoB,CAAC;","names":[]}

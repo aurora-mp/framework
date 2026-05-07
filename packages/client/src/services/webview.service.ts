@@ -47,6 +47,18 @@ export class WebviewService {
         }
     }
 
+    public async invokeWebview<T = any>(id: string | number, eventName: string, ...args: unknown[]): Promise<T> {
+        const webview = this.instances.get(id);
+
+        if (!webview) {
+            const error = new Error(`[Aurora] Cannot invoke webview "${id}" because it does not exist.`);
+            this.logger.warn(error.message);
+            throw error;
+        }
+
+        return webview.invoke<T>(eventName, ...args);
+    }
+
     public getById(id: string | number): IWebView | undefined {
         return this.instances.get(id);
     }

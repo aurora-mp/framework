@@ -1,7 +1,7 @@
 {
     "name": "@aurora-mp/framework",
     "private": true,
-    "version": "0.0.1-alpha.7",
+    "version": "0.0.1-alpha.8",
     "description": "A cross-platform, TypeScript framework for multiplayer mods in GTA.",
     "license": "MIT",
     "author": "Aurora Team",
