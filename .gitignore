@@ -53,5 +53,11 @@ Thumbs.db
 *~
 
 # Tests (RAGE:MP)
+tests/ragemp/bin
+tests/ragemp/*.dll
+tests/ragemp/logs
+tests/ragemp/packages/aurora-mp/*.js
+tests/ragemp/client_packages/*.js
+tests/ragemp/client_packages/*.listcache
 armonia/*
 aurora-rp/*

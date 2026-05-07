@@ -1,0 +1,21 @@
+{
+    "name": "@tests/ragemp-server",
+    "version": "0.0.1-alpha.7",
+    "type": "module",
+    "private": true,
+    "author": "Aurora Team",
+    "license": "MIT",
+    "scripts": {
+        "build": "node build.js",
+        "dev": "node build-dev.js"
+    },
+    "devDependencies": {
+        "@ragempcommunity/types-server": "^2.1.9"
+    },
+    "dependencies": {
+        "@aurora-mp/core": "workspace:*",
+        "@aurora-mp/server": "workspace:*",
+        "@aurora-mp/platform-ragemp-server": "workspace:*",
+        "reflect-metadata": "^0.2.2"
+    }
+}
