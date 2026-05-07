@@ -194,7 +194,6 @@ export class ApplicationFactory {
         await this.initializeCoreServices(rootModule);
 
         // Plugin lifecycle
-        console.dir(this.plugins);
         for (const plugin of this.plugins) {
             if (plugin.onInit) {
                 await plugin.onInit(this.applicationRef);
@@ -341,23 +340,28 @@ export class ApplicationFactory {
      * @param contextModule The module wrapper providing the DI context.
      * @returns A Promise resolving to a new instance with all dependencies injected.
      */
-    private async instantiateClass(targetClass: Type, contextModule: ModuleWrapper): Promise<unknown> {
+    private async instantiateClass(
+        targetClass: Type,
+        contextModule: ModuleWrapper,
+        seen: Set<Token>,
+    ): Promise<unknown> {
         // Resolve constructor-parameter dependencies
         const paramTypes: (Type | undefined)[] = Reflect.getMetadata('design:paramtypes', targetClass) || [];
         const customTokens: (Token | undefined)[] = Reflect.getOwnMetadata(INJECT_TOKEN_KEY, targetClass) || [];
 
-        const dependencies = await Promise.all(
-            paramTypes.map(async (paramType, index) => {
-                // Use custom token if provided, else fall back to the reflected type
-                const token = customTokens[index] || paramType;
-                if (!token) {
-                    throw new Error(
-                        `[Aurora] Could not resolve dependency for ${targetClass.name} at constructor index ${index}.`,
-                    );
-                }
-                return this.resolveDependency(token, contextModule);
-            }),
-        );
+        const dependencies: unknown[] = [];
+        for (let index = 0; index < paramTypes.length; index++) {
+            const paramType = paramTypes[index];
+            const token = customTokens[index] || paramType;
+
+            if (!token) {
+                throw new Error(
+                    `[Aurora] Could not resolve dependency for ${targetClass.name} at constructor index ${index}.`,
+                );
+            }
+
+            dependencies.push(await this.resolveDependency(token, contextModule, seen));
+        }
 
         // Instantiate the class with resolved constructor args
         const instance = new (targetClass as any)(...dependencies);
@@ -374,12 +378,13 @@ export class ApplicationFactory {
             if (ownProps) {
                 propsToInject.push(...ownProps);
             }
+
             ctor = Object.getPrototypeOf(ctor);
         }
 
         // Resolve and assign each property dependency
         for (const { key, token } of propsToInject) {
-            (instance as any)[key] = await this.resolveDependency(token, contextModule);
+            (instance as any)[key] = await this.resolveDependency(token, contextModule, seen);
         }
 
         // Wrap with method-level guard proxy
@@ -408,58 +413,67 @@ export class ApplicationFactory {
         if (seen.has(token)) {
             throw new Error(`[Aurora] Circular dependency detected for token "${getTokenName(token)}".`);
         }
+
         seen.add(token);
 
-        const destinationModule = this.findModuleByProvider(token, contextModule);
-        if (!destinationModule) {
-            throw new Error(`[AuroraDI] Cannot resolve dependency for token "${getTokenName(token)}"`);
-        }
-        const providerDef = this.findProviderDefinition(token, destinationModule);
-        if (!providerDef) {
-            throw new Error(`[AuroraDI] Cannot resolve dependency for token "${getTokenName(token)}"`);
-        }
+        try {
+            const destinationModule = this.findModuleByProvider(token, contextModule);
+            if (!destinationModule) {
+                throw new Error(`[AuroraDI] Cannot resolve dependency for token "${getTokenName(token)}"`);
+            }
 
-        const normalized = normalizeProvider(providerDef);
-        const scope = getProviderScope(providerDef);
+            const providerDef = this.findProviderDefinition(token, destinationModule);
+            if (!providerDef) {
+                throw new Error(`[AuroraDI] Cannot resolve dependency for token "${getTokenName(token)}"`);
+            }
 
-        // useValue
-        if ('useValue' in normalized && normalized.useValue !== undefined) {
-            this.instanceContainer.register(token, normalized.useValue);
-            return normalized.useValue;
-        }
+            const normalized = normalizeProvider(providerDef);
+            const scope = getProviderScope(providerDef);
 
-        // useFactory
-        if ('useFactory' in normalized && normalized.useFactory) {
-            const args = await Promise.all(
-                (normalized.inject ?? []).map(async ({ token: inj, optional }) => {
-                    try {
-                        return await this.resolveDependency(inj, destinationModule, seen);
-                    } catch (err) {
-                        if (optional) {
-                            return undefined;
+            // useValue
+            if ('useValue' in normalized) {
+                this.instanceContainer.register(token, normalized.useValue);
+                return normalized.useValue;
+            }
+
+            // useFactory
+            if ('useFactory' in normalized && normalized.useFactory) {
+                const args = await Promise.all(
+                    (normalized.inject ?? []).map(async ({ token: inj, optional }) => {
+                        try {
+                            return await this.resolveDependency(inj, destinationModule, seen);
+                        } catch (err) {
+                            if (optional) {
+                                return undefined;
+                            }
+                            throw err;
                         }
-                        throw err;
-                    }
-                }),
-            );
-            const result = await normalized.useFactory(...args);
-            if (scope === Scope.SINGLETON) {
-                this.instanceContainer.register(token, result);
-            }
-            return result;
-        }
+                    }),
+                );
 
-        // useClass
-        if ('useClass' in normalized && normalized.useClass) {
-            const instance = await this.instantiateClass(normalized.useClass, destinationModule);
-            if (scope === Scope.SINGLETON) {
-                this.instanceContainer.register(token, instance);
-            }
-            return instance;
-        }
+                const result = await normalized.useFactory(...args);
+                if (scope === Scope.SINGLETON) {
+                    this.instanceContainer.register(token, result);
+                }
 
-        // Should not happen
-        throw new Error(`[AuroraDI] Cannot resolve dependency for token "${getTokenName(token)}"`);
+                return result;
+            }
+
+            // useClass
+            if ('useClass' in normalized && normalized.useClass) {
+                const instance = await this.instantiateClass(normalized.useClass, destinationModule, seen);
+                if (scope === Scope.SINGLETON) {
+                    this.instanceContainer.register(token, instance);
+                }
+                return instance;
+            }
+
+            // Should not happen
+            throw new Error(`[AuroraDI] Cannot resolve dependency for token "${getTokenName(token)}"`);
+        } finally {
+            // Pop from stack to avoid false positives for transient + shared deps.
+            seen.delete(token);
+        }
     }
 
     /**
