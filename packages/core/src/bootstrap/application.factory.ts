@@ -40,6 +40,7 @@ export class ApplicationFactory {
     private readonly moduleWrappers = new Map<Type, ModuleWrapper>();
     private readonly globalModules = new Set<ModuleWrapper>();
     private readonly instanceContainer = new Container();
+    private readonly pendingResolutions = new Map<Token, Promise<unknown>>();
     private readonly flowHandler: ControllerFlowHandler;
     private readonly eventBinder: EventBinder;
     private readonly rpcBinder: RpcBinder;
@@ -305,12 +306,29 @@ export class ApplicationFactory {
         hook: K,
         ...args: unknown[]
     ): Promise<void> {
+        const called = new Set<unknown>();
+
         for (const wrapper of this.moduleWrappers.values()) {
             for (const ctrlType of wrapper.controllers) {
                 const instance = this.instanceContainer.resolve(ctrlType) as any;
+                if (called.has(instance)) continue;
+                called.add(instance);
                 const fn = instance[hook] as Function | undefined;
                 if (typeof fn === 'function') {
                     this.logger.debug(`[Aurora] Calling ${hook} on ${ctrlType.name}.`);
+                    await fn.apply(instance, args);
+                }
+            }
+
+            for (const providerDef of wrapper.metadata.providers ?? []) {
+                const { provide } = normalizeProvider(providerDef);
+                if (!this.instanceContainer.has(provide)) continue;
+                const instance = this.instanceContainer.resolve(provide) as any;
+                if (called.has(instance)) continue;
+                called.add(instance);
+                const fn = instance[hook] as Function | undefined;
+                if (typeof fn === 'function') {
+                    this.logger.debug(`[Aurora] Calling ${hook} on ${getTokenName(provide)}.`);
                     await fn.apply(instance, args);
                 }
             }
@@ -405,6 +423,10 @@ export class ApplicationFactory {
             return this.instanceContainer.resolve(token);
         }
 
+        if (this.pendingResolutions.has(token)) {
+            return this.pendingResolutions.get(token)!;
+        }
+
         if (seen.has(token)) {
             throw new Error(`[Aurora] Circular dependency detected for token "${getTokenName(token)}".`);
         }
@@ -422,44 +444,53 @@ export class ApplicationFactory {
         const normalized = normalizeProvider(providerDef);
         const scope = getProviderScope(providerDef);
 
-        // useValue
+        // useValue is synchronous — no async race possible
         if ('useValue' in normalized && normalized.useValue !== undefined) {
             this.instanceContainer.register(token, normalized.useValue);
             return normalized.useValue;
         }
 
-        // useFactory
-        if ('useFactory' in normalized && normalized.useFactory) {
-            const args = await Promise.all(
-                (normalized.inject ?? []).map(async ({ token: inj, optional }) => {
-                    try {
-                        return await this.resolveDependency(inj, destinationModule, seen);
-                    } catch (err) {
-                        if (optional) {
-                            return undefined;
+        // For async providers, store the promise before the first await so concurrent
+        // resolutions of the same token await the same promise instead of each
+        // creating a separate instance.
+        const promise = (async () => {
+            if ('useFactory' in normalized && normalized.useFactory) {
+                const args = await Promise.all(
+                    (normalized.inject ?? []).map(async ({ token: inj, optional }) => {
+                        try {
+                            return await this.resolveDependency(inj, destinationModule, seen);
+                        } catch (err) {
+                            if (optional) {
+                                return undefined;
+                            }
+                            throw err;
                         }
-                        throw err;
-                    }
-                }),
-            );
-            const result = await normalized.useFactory(...args);
-            if (scope === Scope.SINGLETON) {
-                this.instanceContainer.register(token, result);
+                    }),
+                );
+                const result = await normalized.useFactory(...args);
+                if (scope === Scope.SINGLETON) {
+                    this.instanceContainer.register(token, result);
+                }
+                return result;
             }
-            return result;
-        }
 
-        // useClass
-        if ('useClass' in normalized && normalized.useClass) {
-            const instance = await this.instantiateClass(normalized.useClass, destinationModule);
-            if (scope === Scope.SINGLETON) {
-                this.instanceContainer.register(token, instance);
+            if ('useClass' in normalized && normalized.useClass) {
+                const instance = await this.instantiateClass(normalized.useClass, destinationModule);
+                if (scope === Scope.SINGLETON) {
+                    this.instanceContainer.register(token, instance);
+                }
+                return instance;
             }
-            return instance;
-        }
 
-        // Should not happen
-        throw new Error(`[AuroraDI] Cannot resolve dependency for token "${getTokenName(token)}"`);
+            throw new Error(`[AuroraDI] Cannot resolve dependency for token "${getTokenName(token)}"`);
+        })();
+
+        this.pendingResolutions.set(token, promise);
+        try {
+            return await promise;
+        } finally {
+            this.pendingResolutions.delete(token);
+        }
     }
 
     /**
