@@ -61,3 +61,6 @@ tests/ragemp/client_packages/*.js
 tests/ragemp/client_packages/*.listcache
 armonia/*
 aurora-rp/*
+
+# cli
+packages/cli/bin/*

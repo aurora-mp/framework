@@ -179,6 +179,44 @@ importers:
         specifier: ^8.5.1
         version: 8.5.1(@swc/core@1.15.8)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
 
+  packages/platforms/fivem/client:
+    dependencies:
+      '@aurora-mp/client':
+        specifier: workspace:*
+        version: link:../../../client
+      '@aurora-mp/core':
+        specifier: workspace:*
+        version: link:../../../core
+      '@citizenfx/client':
+        specifier: ^2.0.23683-1
+        version: 2.0.23683-1
+    devDependencies:
+      '@types/node':
+        specifier: ^25.0.3
+        version: 25.0.3
+      tsup:
+        specifier: ^8.5.1
+        version: 8.5.1(@swc/core@1.15.8)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+
+  packages/platforms/fivem/server:
+    dependencies:
+      '@aurora-mp/core':
+        specifier: workspace:*
+        version: link:../../../core
+      '@aurora-mp/server':
+        specifier: workspace:*
+        version: link:../../../server
+      '@citizenfx/server':
+        specifier: ^2.0.23683-1
+        version: 2.0.23683-1
+    devDependencies:
+      '@types/node':
+        specifier: ^25.0.3
+        version: 25.0.3
+      tsup:
+        specifier: ^8.5.1
+        version: 8.5.1(@swc/core@1.15.8)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+
   packages/platforms/ragemp/client:
     dependencies:
       '@aurora-mp/client':
@@ -993,6 +1031,12 @@ packages:
 
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
+
+  '@citizenfx/client@2.0.23683-1':
+    resolution: {integrity: sha512-TB0CPg0VR3nud2ZcMVu/qEQHk4FArHf/tlS+FCwVKHzDuGBU34omi2kKro6hAQYa5zmd+tPm1J+VthweKedemg==}
+
+  '@citizenfx/server@2.0.23683-1':
+    resolution: {integrity: sha512-HPGCC6Vgq6vMvqS5+cexqgfln9FCbE2CySk4hDSLCnYjQgHQ4q+cWoJBPT7yl5fy3Fv0tlA2zFshHG6BaV129g==}
 
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
@@ -10031,6 +10075,10 @@ snapshots:
       '@babel/helper-validator-identifier': 7.28.5
 
   '@bcoe/v8-coverage@0.2.3': {}
+
+  '@citizenfx/client@2.0.23683-1': {}
+
+  '@citizenfx/server@2.0.23683-1': {}
 
   '@colors/colors@1.5.0':
     optional: true

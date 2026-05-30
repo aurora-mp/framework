@@ -2,12 +2,14 @@ import { ApplicationFactory, AuroraPlugin, Module, Type } from '@aurora-mp/core'
 import { ServerModule } from '@aurora-mp/server';
 import { RageServerDriver } from './driver';
 import { PlatformModule } from './platform.module';
+import { winstonLogger } from './configs/winston.logger';
 
 /**
  * Creates and initializes an application specifically for the RAGE Multiplayer Server platform.
  * This function hides the complexity of creating and passing the platform driver.
- *
+ * 
  * @param rootModule The root module of the application.
+ * @deprecated The RAGE Multiplayer Server platform is deprecated and will be removed in a future release. Please migrate to the FiveM driver.
  * @returns A promise that resolves to the initialized application instance.
  */
 export function createRageApplication(rootModule: Type, plugins: AuroraPlugin[] = []) {
@@ -23,5 +25,8 @@ export function createRageApplication(rootModule: Type, plugins: AuroraPlugin[] 
     class InternalRootModule {}
 
     const driver = new RageServerDriver();
+    const logger = winstonLogger;
+    
+    logger.warn('[Aurora] RAGE Multiplayer Server driver is deprecated and will be removed in a future release. Please migrate to the FiveM driver.');
     return ApplicationFactory.create(InternalRootModule, driver, plugins);
 }

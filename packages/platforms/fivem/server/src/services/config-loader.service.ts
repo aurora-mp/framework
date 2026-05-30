@@ -3,7 +3,7 @@ const { readFileSync, existsSync } = require('fs');
 const path = require('path');
 
 @Injectable()
-export class RageConfigLoader implements IConfigLoader {
+export class ConfigLoader implements IConfigLoader {
     public load(): Record<string, string> {
         const envPath = path.resolve(process.cwd(), '.env');
         const config: Record<string, string> = {};

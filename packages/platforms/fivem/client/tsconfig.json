@@ -1,9 +1,8 @@
 {
-	"extends": "../../../tsconfig.base.json",
+	"extends": "../../../../tsconfig.base.json",
 	"compilerOptions": {
 		"types": [
-			"./node_modules/@types/node",
-			"./node_modules/@omp-node/core"
+			"./node_modules/@citizenfx/client"
 		],
 		"outDir": "dist"
 	},

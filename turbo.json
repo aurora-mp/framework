@@ -4,6 +4,10 @@
         "build": {
             "dependsOn": ["^build"],
             "outputs": ["dist/**"]
+        },
+        "@aurora-mp/cli#build": {
+            "dependsOn": ["^build"],
+            "outputs": ["bin/**"]
         }
     }
 }
