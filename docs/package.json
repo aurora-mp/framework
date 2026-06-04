@@ -1,6 +1,6 @@
 {
     "name": "@aurora-mp/docs",
-    "version": "0.0.1-alpha.7",
+    "version": "1.0.0",
     "private": true,
     "scripts": {
         "docusaurus": "docusaurus",
