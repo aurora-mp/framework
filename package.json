@@ -35,7 +35,7 @@
         "ts-jest": "^29.4.6",
         "ts-node": "^10.9.2",
         "tsup": "^8.5.1",
-        "turbo": "^2.7.3",
+        "turbo": "^2.9.16",
         "typescript": "^5.9.3"
     },
     "dependencies": {
