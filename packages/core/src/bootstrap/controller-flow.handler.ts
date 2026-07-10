@@ -32,13 +32,23 @@ export class ControllerFlowHandler {
 
         const sorted: MethodParameter[] = [...handler.params].sort((a, b) => a.index - b.index);
         const rawArgs = context.args;
-        const args: unknown[] = [];
+        const decoratedIndices = new Set(sorted.map((p) => p.index));
+        const outOfBandCount = sorted.filter((p) => p.type === MethodParamType.SOURCE).length;
+        const highestDecoratedIndex = sorted.length ? sorted[sorted.length - 1]!.index : -1;
+        const totalSlots = Math.max(highestDecoratedIndex + 1, rawArgs.length + outOfBandCount);
+        const args: unknown[] = new Array(totalSlots);
+        let rawIdx = 0;
+        for (let i = 0; i < totalSlots; i++) {
+            if (decoratedIndices.has(i)) continue;
+            if (rawIdx < rawArgs.length) args[i] = rawArgs[rawIdx++];
+        }
 
         for (const param of sorted) {
             let value: unknown;
             switch (param.type) {
                 case MethodParamType.PLAYER:
-                    value = param.data ? (rawArgs[0] as any)?.[param.data] : rawArgs[0];
+                    const p = context.player ?? rawArgs[0];
+                    value = param.data ? (p as any)?.[param.data] : p;
                     break;
 
                 case MethodParamType.PAYLOAD:
@@ -64,6 +74,10 @@ export class ControllerFlowHandler {
                     } else {
                         value = rawArgs[param.index];
                     }
+                    break;
+
+                case MethodParamType.SOURCE:
+                    value = context.source;
                     break;
 
                 default:

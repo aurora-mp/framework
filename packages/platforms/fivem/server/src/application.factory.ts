@@ -1,6 +1,6 @@
-import { ApplicationFactory, Module, Type } from '@aurora-mp/core';
+import { ApplicationFactory, IApplication, Module, Type } from '@aurora-mp/core';
 import { ServerModule } from '@aurora-mp/server';
-import { FiveMServerDriver } from './driver';
+import { FiveMServerDriver, FiveMServerDriverOptions } from './driver';
 import { PlatformModule } from './platform.module';
 
 /**
@@ -10,18 +10,31 @@ import { PlatformModule } from './platform.module';
  * @param rootModule The root module of the application.
  * @returns A promise that resolves to the initialized application instance.
  */
-export function createFiveMApplication(rootModule: Type) {
-    /**
-     * We dynamically create a new root module that imports both
-     * our internal platform module and the user's application module.
-     * This makes the platform services (like the logger) available to the whole application
-     * without the user having to do anything.
-     */
+export async function createFiveMApplication(
+    rootModule: Type,
+    options?: FiveMServerDriverOptions,
+): Promise<IApplication> {
     @Module({
         imports: [rootModule, PlatformModule, ServerModule],
     })
     class InternalRootModule {}
 
-    const driver = new FiveMServerDriver();
-    return ApplicationFactory.create(InternalRootModule, driver);
+    const driver = new FiveMServerDriver(options).init();
+    const app = await ApplicationFactory.create(InternalRootModule, driver);
+
+    const resourceName = GetCurrentResourceName();
+    on('onResourceStop', (stopped: string) => {
+        if (stopped !== resourceName) return;
+        void (async () => {
+            try {
+                await app.close('onResourceStop');
+            } catch (err) {
+                console.error('[Aurora] Error during app.close():', err);
+            } finally {
+                driver.dispose();
+            }
+        })();
+    });
+
+    return app;
 }

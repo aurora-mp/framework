@@ -1,3 +1,4 @@
+import { Unsubscribe } from '../types/unsubscribe.type';
 import { IWebView } from './webview.interface';
 
 /**
@@ -11,12 +12,31 @@ import { IWebView } from './webview.interface';
  */
 export interface IPlatformDriver<TPlayer = unknown> {
     /**
-     * Registers a listener for a general platform event.
+     * @driver FiveMServerDriver
+     * Initializes the driver and registers its internal listeners. This method
+     * must be called once after construction and before any other method.
+     * Calling it more than once throws an error.
+     *
+     * @returns The driver instance for chaining.
+     */
+    init?(): this;
+
+    /**
+     * @driver FiveMServerDriver
+     * Disposes the driver and unregisters all its internal listeners. This method
+     * must be called once on resource stop, after the application has been closed.
+     * Calling it more than once has no effect.
+     */
+    dispose?(): void;
+
+    /**
+     * Registers a listener for a general platform event. Implementations MAY
+     * return an {@link Unsubscribe} handle; consumers must tolerate `void`.
      *
      * @param eventName - The event identifier (e.g., 'playerConnect', 'resourceStart').
      * @param listener - Called with the raw event arguments when the event fires.
      */
-    on(eventName: string, listener: (...args: unknown[]) => void): void;
+    on(eventName: string, listener: (...args: unknown[]) => void): void | Unsubscribe;
 
     /**
      * Unregisters a listener for a general platform event.
@@ -27,20 +47,23 @@ export interface IPlatformDriver<TPlayer = unknown> {
     off?(eventName: string, listener: (...args: unknown[]) => void): void;
 
     /**
-     * Registers a listener for a client-originated event.
+     * Registers a listener for a client-originated event. Implementations MAY
+     * return an {@link Unsubscribe} handle; consumers must tolerate `void`.
      *
      * @param eventName - The client event identifier.
      * @param listener - Called with the player instance and event arguments.
      */
-    onClient?(eventName: string, listener: (player: TPlayer, ...args: unknown[]) => void): void;
+    onClient?(eventName: string, listener: (player: TPlayer, ...args: unknown[]) => void): void | Unsubscribe;
 
     /**
-     * Registers a listener for a server-originated event.
+     * Registers a listener for a server-originated event (client-side only
+     * Implementations MAY return an {@link Unsubscribe} handle;
+     * consumers must tolerate `void`.
      *
      * @param eventName - The server event identifier.
-     * @param listener - Called with the player instance and event arguments.
+     * @param listener - Called with the event arguments as sent by the server.
      */
-    onServer?(eventName: string, listener: (player: TPlayer, ...args: unknown[]) => void): void;
+    onServer?(eventName: string, listener: (...args: unknown[]) => void): void | Unsubscribe;
 
     /**
      * Emits a general event to all listeners (server or client).
@@ -89,20 +112,68 @@ export interface IPlatformDriver<TPlayer = unknown> {
     invokeClient?<T = any>(player: TPlayer, rpcName: string, ...args: unknown[]): Promise<T>;
 
     /**
-     * Registers a handler for client-initiated RPC calls.
+     * Registers a handler for client-initiated RPC calls. Implementations MAY
+     * return an {@link Unsubscribe} handle; consumers must tolerate `void`.
      *
      * @param rpcName - The RPC channel identifier.
      * @param handler - Function to handle incoming RPC requests.
      */
-    onRpcClient?(rpcName: string, handler: (...args: unknown[]) => Promise<unknown> | unknown): void;
+    onRpcClient?(
+        rpcName: string,
+        handler: (...args: unknown[]) => Promise<unknown> | unknown,
+    ): void | Unsubscribe;
 
     /**
-     * Registers a handler for server-initiated RPC calls.
+     * Registers a handler for server-initiated RPC calls. Implementations MAY
+     * return an {@link Unsubscribe} handle; consumers must tolerate `void`.
      *
      * @param rpcName - The RPC channel identifier.
      * @param handler - Function to handle incoming RPC requests.
      */
-    onRpcServer?(rpcName: string, handler: (...args: unknown[]) => Promise<unknown> | unknown): void;
+    onRpcServer?(
+        rpcName: string,
+        handler: (...args: unknown[]) => Promise<unknown> | unknown,
+    ): void | Unsubscribe;
+
+    /**
+     * Returns the platform source identifier for the event currently being
+     * dispatched, if any.
+     * This is useful for determining which player triggered an event or RPC.
+    */
+    getInvocationSource?(): number | undefined;
+
+    /**
+     * Resolves the native (platform-specific) representation of a player
+     * from its numeric source id. FiveM returns the source itself; RAGE-MP
+     * returns a `PlayerMp` object. Used by the framework's `PlayerRegistry`
+     * to build a uniform {@link Player} wrapper.
+     *
+     * Returns `undefined` when no player currently matches the id (dropped,
+     * or pre-join).
+     */
+    resolveNativePlayer?(source: number): TPlayer | undefined;
+
+    /**
+     * @internal
+     * Wraps the platform's player join moment, normalised across platforms:
+     * - FiveM: `playerConnecting`
+     * - RAGE-MP: `playerJoin`
+     *
+     * @param listener - Called with the source id of the joining player.
+     * @returns An {@link Unsubscribe} handle where possible; consumers must tolerate `void`.
+    */
+    onPlayerJoin?(listener: (source: number) => void): void | Unsubscribe;
+
+    /**
+     * @internal
+     * Wraps the platform's player drop moment, normalised across platforms:
+     * - FiveM: `playerDropped`
+     * - RAGE-MP: `playerQuit`
+     * 
+     * @param listener - Called with the source id of the dropping player and an optional reason.
+     * @returns An {@link Unsubscribe} handle where possible; consumers must tolerate `void`.
+     */
+    onPlayerDrop?(listener: (source: number, reason?: string) => void): void | Unsubscribe;
 
     /**
      * Creates a new WebView instance on the client side.

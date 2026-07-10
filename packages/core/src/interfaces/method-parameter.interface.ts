@@ -29,7 +29,7 @@ export interface PayloadParameter extends BaseParameter {
  */
 export interface ParamParameter extends BaseParameter {
     /**
-     * The parameter kind: inject a single payload property.
+     * The parameter kind: inject a specific property from the payload.
      */
     type: MethodParamType.PARAM;
 
@@ -53,9 +53,22 @@ export interface PlayerParameter extends BaseParameter {
 }
 
 /**
- * Union type covering all possible controller method
- * parameter metadata shapes (payload, single property, or player).
+ * Metadata for a controller method parameter that receives
+ * the platform-provided source identifier for the event.
  *
  * @public
  */
-export type MethodParameter = PayloadParameter | ParamParameter | PlayerParameter;
+export interface SourceParameter extends BaseParameter {
+    /**
+     * The parameter kind: inject the source identifier.
+     */
+    type: MethodParamType.SOURCE;
+}
+
+/**
+ * Union type covering all possible controller method
+ * parameter metadata shapes (payload, single property, source or player)
+ *
+ * @public
+ */
+export type MethodParameter = PayloadParameter | ParamParameter | PlayerParameter | SourceParameter;

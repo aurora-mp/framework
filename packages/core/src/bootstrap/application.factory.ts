@@ -18,9 +18,16 @@ import {
     CONFIG_SERVICE,
 } from '../constants';
 import { ModuleWrapper, Container } from '../di';
+import {
+    PlayerComponentRegistry,
+    PlayerExtenderRegistry,
+    PlayerRegistry,
+    isPlayerComponent,
+    type PlayerExtender,
+} from '../player';
 import { ModuleMetadata, Provider, Token, Type } from '../types';
 import { Scope } from '../enums';
-import { getProviderScope, getTokenName, normalizeProvider, tokenToString } from '../utils';
+import { formatError, getProviderScope, getTokenName, normalizeProvider, tokenToString } from '../utils';
 import { ControllerFlowHandler } from './controller-flow.handler';
 import { EventBinder } from './event-binder';
 import { RpcBinder } from './rpc-binder';
@@ -45,6 +52,12 @@ export class ApplicationFactory {
     private readonly eventBinder: EventBinder;
     private readonly rpcBinder: RpcBinder;
     private readonly plugins: AuroraPlugin[] = [];
+    private readonly playerRegistry: PlayerRegistry;
+    private readonly componentRegistry = new PlayerComponentRegistry();
+    private readonly extenderRegistry = new PlayerExtenderRegistry();
+    private readonly componentToModule = new Map<Type, ModuleWrapper>();
+    private rootModuleWrapper?: ModuleWrapper;
+    private lifecycleUnsubscribers: Array<() => void> = [];
 
     private logger: ILogger = console;
     private config?: IConfigService;
@@ -60,15 +73,25 @@ export class ApplicationFactory {
      */
     private constructor(private readonly platformDriver: IPlatformDriver) {
         this.instanceContainer.register(PLATFORM_DRIVER, this.platformDriver);
+        this.playerRegistry = new PlayerRegistry();
+        this.instanceContainer.register(PlayerRegistry, this.playerRegistry);
+        this.instanceContainer.register(PlayerComponentRegistry, this.componentRegistry);
+        this.instanceContainer.register(PlayerExtenderRegistry, this.extenderRegistry);
         this.flowHandler = new ControllerFlowHandler(this.instanceContainer);
-        this.eventBinder = new EventBinder(platformDriver, this.flowHandler);
-        this.rpcBinder = new RpcBinder(platformDriver, this.flowHandler);
+        this.eventBinder = new EventBinder(platformDriver, this.flowHandler, this.playerRegistry);
+        this.rpcBinder = new RpcBinder(platformDriver, this.flowHandler, this.playerRegistry);
         this.applicationRef = {
             start: this.start.bind(this),
             get: this.get.bind(this),
             close: this.close.bind(this),
             usePlugins: this.usePlugins.bind(this),
+            extendPlayer: this.extendPlayer.bind(this),
         };
+    }
+
+    public extendPlayer(extender: PlayerExtender): this {
+        this.extenderRegistry.register(extender);
+        return this;
     }
 
     /**
@@ -105,18 +128,17 @@ export class ApplicationFactory {
         this.started = true;
         this.logger.info('[Aurora] Starting application, binding events and rpcs.');
 
-        // Binding controller events.
+        this.wirePlayerLifecycle();
+
         this.bindControllerEvents();
         this.bindControllerRpcs();
 
-        // Plugin lifecycle
         for (const plugin of this.plugins) {
             if (plugin.onBootstrap) {
                 await plugin.onBootstrap(this.applicationRef);
             }
         }
 
-        // Call lifecycle hooks and register shutdown listeners.
         await this.callLifecycle('onAppStarted');
         this.registerShutdownListeners();
 
@@ -134,6 +156,13 @@ export class ApplicationFactory {
 
         this.closed = true;
         this.logger.info(`[Aurora] Closing application (signal: ${signal})`);
+
+        for (const unsub of this.lifecycleUnsubscribers.splice(0)) {
+            try {
+                unsub();
+            } catch {
+            }
+        }
 
         await this.callLifecycle('onAppShutdown', signal as unknown);
 
@@ -187,15 +216,15 @@ export class ApplicationFactory {
      * @param rootModuleType The root module class
      */
     private async initialize(rootModuleType: Type): Promise<void> {
-        // Scan all modules to build the dependency graph.
         await this.scanModules(rootModuleType);
 
-        // Resolve and instantiate core services needed by the factory itself.
         const rootModule = this.moduleWrappers.get(rootModuleType)!;
+        this.rootModuleWrapper = rootModule;
         await this.initializeCoreServices(rootModule);
 
-        // Plugin lifecycle
-        console.dir(this.plugins);
+        this.scanPlayerComponents();
+        this.configurePlayerRegistries();
+
         for (const plugin of this.plugins) {
             if (plugin.onInit) {
                 await plugin.onInit(this.applicationRef);
@@ -206,17 +235,13 @@ export class ApplicationFactory {
             this.logModulesTree();
         }
 
-        // Instantiate all remaining providers and controllers.
         await this.instantiateModules();
         await this.callLifecycle('onAppInit');
 
         this.logger.info('[Aurora] Application initialized successfully.');
     }
 
-    // TODO
     private registerShutdownListeners(): void {
-        // process.on('SIGINT', async () => await this.close('SIGINT'));
-        // process.on('SIGTERM', async () => await this.close('SIGTERM'));
     }
 
     /**
@@ -342,12 +367,89 @@ export class ApplicationFactory {
         for (const moduleWrapper of this.moduleWrappers.values()) {
             for (const providerDef of moduleWrapper.metadata.providers ?? []) {
                 const { provide } = normalizeProvider(providerDef);
+                if (typeof provide === 'function' && isPlayerComponent(provide as Type)) continue;
                 await this.resolveDependency(provide, moduleWrapper);
             }
 
             for (const controller of moduleWrapper.controllers) {
                 await this.resolveDependency(controller, moduleWrapper);
             }
+        }
+    }
+
+    /**
+     * Walk every module's provider list and register any class marked with
+     * {@link PlayerComponent} into {@link PlayerComponentRegistry}. The
+     * module wrapper is remembered so per-player resolves have the right
+     * context for `@Inject()` chain resolution.
+     */
+    private scanPlayerComponents(): void {
+        for (const moduleWrapper of this.moduleWrappers.values()) {
+            for (const providerDef of moduleWrapper.metadata.providers ?? []) {
+                const { provide } = normalizeProvider(providerDef);
+                if (typeof provide !== 'function') continue;
+                if (!isPlayerComponent(provide as Type)) continue;
+                this.componentRegistry.register(provide as Type);
+                this.componentToModule.set(provide as Type, moduleWrapper);
+            }
+        }
+    }
+
+    /**
+     * Once logger and modules are ready, hand the registries the
+     * dependencies they need to build wrappers and instantiate components
+     * on demand.
+     */
+    private configurePlayerRegistries(): void {
+        const componentFactory = <T>(ctor: Type<T>): Promise<T> => {
+            const contextModule = this.componentToModule.get(ctor as Type) ?? this.rootModuleWrapper!;
+            return this.resolveDependency(ctor, contextModule) as Promise<T>;
+        };
+
+        this.playerRegistry.configure({
+            driver: this.platformDriver,
+            componentRegistry: this.componentRegistry,
+            componentFactory,
+            extenderRegistry: this.extenderRegistry,
+            logger: this.logger,
+        });
+
+        this.extenderRegistry.configure({
+            container: this.instanceContainer,
+            logger: this.logger,
+        });
+    }
+
+    /**
+     * Subscribes to the driver's normalised join/drop events and routes
+     * them into the {@link PlayerRegistry}. No-ops when the driver does not
+     * expose the optional lifecycle hooks — old drivers still work but
+     * lose per-player component attach/detach.
+     */
+    private wirePlayerLifecycle(): void {
+        if (this.platformDriver.onPlayerJoin) {
+            const unsub = this.platformDriver.onPlayerJoin((source) => {
+                void this.playerRegistry
+                    .create(source)
+                    .catch((error) =>
+                        this.logger.error(
+                            `[Aurora] Failed to create player wrapper for source ${source}: ${formatError(error)}`,
+                        ),
+                    );
+            });
+            if (typeof unsub === 'function') this.lifecycleUnsubscribers.push(unsub);
+        }
+        if (this.platformDriver.onPlayerDrop) {
+            const unsub = this.platformDriver.onPlayerDrop((source) => {
+                void this.playerRegistry
+                    .destroy(source)
+                    .catch((error) =>
+                        this.logger.error(
+                            `[Aurora] Failed to destroy player wrapper for source ${source}: ${formatError(error)}`,
+                        ),
+                    );
+            });
+            if (typeof unsub === 'function') this.lifecycleUnsubscribers.push(unsub);
         }
     }
 

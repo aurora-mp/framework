@@ -30,6 +30,9 @@ export interface ExecutionContext {
      */
     readonly player?: unknown;
 
+    /** Platform source id, if available. */
+    readonly source?: number;
+
     /**
      * Returns the class (i.e. controller or provider) that defines the current handler.
      */

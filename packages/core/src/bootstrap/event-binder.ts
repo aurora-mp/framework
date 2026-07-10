@@ -1,6 +1,7 @@
 import { EventType } from '../enums';
 import { CONTROLLER_EVENTS_KEY, CONTROLLER_PARAMS_KEY, GUARDS_METADATA_KEY } from '../constants';
 import { ExecutionContext, IPlatformDriver } from '../interfaces';
+import { PlayerRegistry } from '../player/player-registry';
 import { EventMetadata, Type } from '../types';
 import { ControllerFlowHandler } from './controller-flow.handler';
 
@@ -14,6 +15,7 @@ export class EventBinder {
     constructor(
         private readonly platformDriver: IPlatformDriver,
         private readonly flowHandler: ControllerFlowHandler,
+        private readonly playerRegistry?: PlayerRegistry,
     ) {}
 
     /**
@@ -24,20 +26,16 @@ export class EventBinder {
         for (const [controllerType, controllerInstance] of controllersWithInstances) {
             const eventHandlers: EventMetadata[] = Reflect.getMetadata(CONTROLLER_EVENTS_KEY, controllerType) || [];
             for (const handler of eventHandlers) {
-                // Attach runtime param metadata
                 const params =
                     Reflect.getOwnMetadata(CONTROLLER_PARAMS_KEY, controllerType.prototype, handler.methodName) ?? [];
                 handler.params = params;
 
-                // Attach runtime guards metadata
                 const guards =
                     Reflect.getOwnMetadata(GUARDS_METADATA_KEY, controllerType.prototype, handler.methodName) ?? [];
                 handler.guards = guards;
 
-                // Dispatcher = wraps flowHandler param injection
                 const dispatcher = this.createDispatcher(controllerInstance, handler);
 
-                // Register to platform
                 switch (handler.type) {
                     case EventType.ON:
                         this.platformDriver.on(handler.name, dispatcher);
@@ -61,15 +59,22 @@ export class EventBinder {
         handler: EventMetadata,
     ): (...args: unknown[]) => Promise<void> {
         return async (...args: unknown[]) => {
+            const capturedSource = this.platformDriver.getInvocationSource?.();
             try {
+                const wrappedPlayer =
+                    capturedSource !== undefined ? this.playerRegistry?.get(capturedSource) : undefined;
+                const contextPlayer =
+                    wrappedPlayer ?? (handler.type === EventType.ON_CLIENT ? args[0] : undefined);
+
                 const context: ExecutionContext = {
                     name: handler.name,
                     args,
                     payload: args,
-                    player: handler.type === EventType.ON_CLIENT ? args[0] : undefined,
+                    player: contextPlayer,
+                    ...(capturedSource !== undefined ? { source: capturedSource } : {}),
                     getClass: () => instance.constructor as Type,
                     getHandler: () => instance[handler.methodName] as Function,
-                    getPlayer: () => args[0],
+                    getPlayer: () => contextPlayer,
                 };
 
                 const allowed = await this.flowHandler.canActivate(context);
