@@ -1,6 +1,6 @@
 import { Global, Module, LOGGER_SERVICE, PLATFORM_DRIVER, CONFIG_LOADER } from '@aurora-mp/core';
-import { LoggerService, RageConfigLoader } from './services/';
 import { RageServerDriver } from './driver';
+import { RageConfigLoader, LoggerService } from './services';
 
 /**
  * This internal module provides and exports the platform-specific services.

@@ -10,6 +10,7 @@ export * from './interfaces';
 export * from './rpc';
 export * from './types';
 export * from './utils';
+export type { IConfigService } from './interfaces/config-service.interface';
 export {
     PlayerEntity,
     PlayerRegistry,
