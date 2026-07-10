@@ -70,7 +70,8 @@ export class RpcBinder {
                 return;
             }
 
-            const methodArgs = this.flowHandler.createArgs(context, rpc);
+            const rpcArgs = rpc.type === RpcType.ON_CLIENT ? [player, ...args] : args;
+            const methodArgs = this.flowHandler.createArgs({ ...context, args: rpcArgs, payload: rpcArgs }, rpc);
             return await (instance[rpc.methodName] as (...a: any[]) => any)(...methodArgs);
         };
     }

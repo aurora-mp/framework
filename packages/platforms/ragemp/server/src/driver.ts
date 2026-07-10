@@ -63,6 +63,58 @@ export class RageServerDriver implements IPlatformDriver<PlayerMp> {
         return mp.players.at(source) ?? undefined;
     }
 
+    public getPlayerName(source: number): string | undefined {
+        return mp.players.at(source)?.name;
+    }
+
+    public getPlayerPosition(source: number): { x: number; y: number; z: number } | undefined {
+        const pos = mp.players.at(source)?.position;
+        return pos ? { x: pos.x, y: pos.y, z: pos.z } : undefined;
+    }
+
+    public getPlayerHeading(source: number): number | undefined {
+        return mp.players.at(source)?.heading;
+    }
+
+    public getPlayerDimension(source: number): number | undefined {
+        return mp.players.at(source)?.dimension;
+    }
+
+    public setPlayerDimension(source: number, dimension: number): void {
+        const player = mp.players.at(source);
+        if (player) player.dimension = dimension;
+    }
+
+    public getPlayerVehicle(source: number): unknown {
+        return mp.players.at(source)?.vehicle ?? undefined;
+    }
+
+    public getPlayerModel(source: number): number | undefined {
+        return mp.players.at(source)?.model;
+    }
+
+    public setPlayerModel(source: number, model: number): void {
+        const player = mp.players.at(source);
+        if (player) player.model = model;
+    }
+
+    public getPlayerHealth(source: number): number | undefined {
+        return mp.players.at(source)?.health;
+    }
+
+    public setPlayerHealth(source: number, health: number): void {
+        const player = mp.players.at(source);
+        if (player) player.health = health;
+    }
+
+    public setPlayerVariable(source: number, key: string, value: unknown): void {
+        mp.players.at(source)?.setVariable(key, value as never);
+    }
+
+    public getPlayerVariable(source: number, key: string): unknown {
+        return mp.players.at(source)?.getVariable(key);
+    }
+
     public onPlayerJoin(listener: (source: number) => void): Unsubscribe {
         return this.addListener('playerJoin', (player: unknown) => {
             const id = playerId(player);
@@ -152,12 +204,20 @@ export class RageServerDriver implements IPlatformDriver<PlayerMp> {
         const wrapped = this.facade.wrapHandler(rpcName, handler);
         const proc = async (player: unknown, ...allArgs: unknown[]) => {
             const previous = this.currentPlayer;
-            if (isPlayer(player)) this.currentPlayer = player;
+            const sourceId = isPlayer(player) ? player.id : typeof player === 'number' ? player : typeof allArgs[0] === 'number' ? allArgs[0] : undefined;
+            const payloadArgs =
+                typeof player === 'object' && !isPlayer(player) && typeof allArgs[0] === 'number'
+                    ? allArgs.slice(1)
+                    : allArgs;
+            const resolvedPlayer = sourceId !== undefined ? mp.players.at(sourceId) ?? undefined : undefined;
+            if (resolvedPlayer) this.currentPlayer = resolvedPlayer;
+
             try {
-                const { result, error } = await wrapped(...allArgs);
+                const { result, error } = await wrapped(...payloadArgs);
                 if (error != null) throw new RpcError(error, RpcErrorCode.CLIENT_ERROR);
                 return result ?? null;
-            } finally {
+            }
+            finally {
                 this.currentPlayer = previous;
             }
         };

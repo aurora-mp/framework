@@ -192,4 +192,73 @@ export interface IPlatformDriver<TPlayer = unknown> {
      * @param id - The unique identifier of the WebView to destroy.
      */
     destroyWebview?(id: string | number): void;
+
+    /**
+     * Reads the display name of the player identified by `source`. Backs the
+     * `PlayerEntity.name` getter. Return `undefined` when the platform cannot
+     * resolve the player (dropped, or pre-join).
+     */
+    getPlayerName?(source: number): string | undefined;
+
+    /**
+     * Reads the player's current world position. Backs `PlayerEntity.position`.
+     */
+    getPlayerPosition?(source: number): { x: number; y: number; z: number } | undefined;
+
+    /**
+     * Reads the player's current heading (yaw, in degrees). Backs
+     * `PlayerEntity.heading`.
+     */
+    getPlayerHeading?(source: number): number | undefined;
+
+    /**
+     * Reads the player's current dimension / routing bucket. Backs
+     * `PlayerEntity.dimension` getter.
+     */
+    getPlayerDimension?(source: number): number | undefined;
+
+    /**
+     * Sets the player's dimension / routing bucket. Backs
+     * `PlayerEntity.dimension` setter.
+     */
+    setPlayerDimension?(source: number, dimension: number): void;
+
+    /**
+     * Reads the vehicle the player is currently in, or `undefined` when on
+     * foot. Return type is platform-specific (e.g. `VehicleMp` on RAGE-MP,
+     * numeric entity handle on FiveM).
+     */
+    getPlayerVehicle?(source: number): unknown;
+
+    /**
+     * Reads the player's current model hash. Backs `PlayerEntity.model` getter.
+     */
+    getPlayerModel?(source: number): number | undefined;
+
+    /**
+     * Sets the player's model. Backs `PlayerEntity.model` setter.
+     */
+    setPlayerModel?(source: number, model: number): void;
+
+    /**
+     * Reads the player's current health. Backs `PlayerEntity.health` getter.
+     */
+    getPlayerHealth?(source: number): number | undefined;
+
+    /**
+     * Sets the player's health. Backs `PlayerEntity.health` setter.
+     */
+    setPlayerHealth?(source: number, health: number): void;
+
+    /**
+     * Stores an arbitrary key/value pair replicated to the player's client.
+     * Modelled after RAGE-MP's `player.setVariable`; FiveM drivers may back
+     * this with statebags. Backs `PlayerEntity.setVariable`.
+     */
+    setPlayerVariable?(source: number, key: string, value: unknown): void;
+
+    /**
+     * Reads a previously set variable. Backs `PlayerEntity.getVariable`.
+     */
+    getPlayerVariable?(source: number, key: string): unknown;
 }

@@ -47,8 +47,7 @@ export class ControllerFlowHandler {
             let value: unknown;
             switch (param.type) {
                 case MethodParamType.PLAYER:
-                    const p = context.player ?? rawArgs[0];
-                    value = param.data ? (p as any)?.[param.data] : p;
+                    value = param.data ? (context.player as any)?.[param.data] : context.player;
                     break;
 
                 case MethodParamType.PAYLOAD:

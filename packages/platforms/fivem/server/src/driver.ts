@@ -105,6 +105,127 @@ export class FiveMServerDriver implements IPlatformDriver<number> {
         return normalizePlayer(source);
     }
 
+    public getPlayerName(source: number): string | undefined {
+        const player = normalizePlayer(source);
+        if (player === undefined) return undefined;
+        try {
+            return GetPlayerName(String(player));
+        } catch {
+            return undefined;
+        }
+    }
+
+    public getPlayerPosition(source: number): { x: number; y: number; z: number } | undefined {
+        const ped = this.getPlayerPed(source);
+        if (ped === undefined || ped === 0) return undefined;
+        try {
+            const coords = GetEntityCoords(ped);
+            return { x: coords[0] ?? 0, y: coords[1] ?? 0, z: coords[2] ?? 0 };
+        } catch {
+            return undefined;
+        }
+    }
+
+    public getPlayerHeading(source: number): number | undefined {
+        const ped = this.getPlayerPed(source);
+        if (ped === undefined || ped === 0) return undefined;
+        try {
+            return GetEntityHeading(ped);
+        } catch {
+            return undefined;
+        }
+    }
+
+    public getPlayerDimension(source: number): number | undefined {
+        const player = normalizePlayer(source);
+        if (player === undefined) return undefined;
+        try {
+            return GetPlayerRoutingBucket(String(player));
+        } catch {
+            return undefined;
+        }
+    }
+
+    public setPlayerDimension(source: number, dimension: number): void {
+        const player = normalizePlayer(source);
+        if (player === undefined) return;
+        try {
+            SetPlayerRoutingBucket(String(player), dimension);
+        } catch {
+        }
+    }
+
+    public getPlayerVehicle(source: number): unknown {
+        const ped = this.getPlayerPed(source);
+        if (ped === undefined || ped === 0) return undefined;
+        try {
+            const vehicle = GetVehiclePedIsIn(ped, false);
+            return vehicle === 0 ? undefined : vehicle;
+        } catch {
+            return undefined;
+        }
+    }
+
+    public getPlayerModel(source: number): number | undefined {
+        const ped = this.getPlayerPed(source);
+        if (ped === undefined || ped === 0) return undefined;
+        try {
+            return GetEntityModel(ped);
+        } catch {
+            return undefined;
+        }
+    }
+
+    public setPlayerModel(source: number, model: number): void {
+        const player = normalizePlayer(source);
+        if (player === undefined) return;
+        try {
+            SetPlayerModel(String(player), model);
+        } catch {
+        }
+    }
+
+    public getPlayerHealth(source: number): number | undefined {
+        const ped = this.getPlayerPed(source);
+        if (ped === undefined || ped === 0) return undefined;
+        try {
+            return GetEntityHealth(ped);
+        } catch {
+            return undefined;
+        }
+    }
+
+    public setPlayerVariable(source: number, key: string, value: unknown): void {
+        const player = normalizePlayer(source);
+        if (player === undefined) return;
+        try {
+            const bag = (globalThis as { Player?: (id: string) => { state: { set: (k: string, v: unknown, r: boolean) => void } } }).Player;
+            bag?.(String(player)).state.set(key, value, true);
+        } catch {
+        }
+    }
+
+    public getPlayerVariable(source: number, key: string): unknown {
+        const player = normalizePlayer(source);
+        if (player === undefined) return undefined;
+        try {
+            const bag = (globalThis as { Player?: (id: string) => { state: Record<string, unknown> } }).Player;
+            return bag?.(String(player)).state[key];
+        } catch {
+            return undefined;
+        }
+    }
+
+    private getPlayerPed(source: number): number | undefined {
+        const player = normalizePlayer(source);
+        if (player === undefined) return undefined;
+        try {
+            return GetPlayerPed(String(player));
+        } catch {
+            return undefined;
+        }
+    }
+
     public onPlayerJoin(listener: (source: number) => void): Unsubscribe {
         return this.addListener('playerJoining', () => {
             const player = normalizePlayer(source);
@@ -242,13 +363,9 @@ export class FiveMServerDriver implements IPlatformDriver<number> {
             active = false;
             this.disposers.delete(unsubscribe);
 
-            const remove = (globalThis as { removeEventListener?: (n: string, cb: unknown) => void })
-                .removeEventListener;
-            if (typeof remove === 'function') {
-                try {
-                    remove(eventName, guarded);
-                } catch {
-                }
+            try {
+                removeEventListener(eventName, guarded);
+            } catch {
             }
         };
 
