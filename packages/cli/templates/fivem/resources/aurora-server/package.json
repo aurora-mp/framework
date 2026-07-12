@@ -1,0 +1,23 @@
+{
+    "name": "aurora-server",
+    "version": "0.0.1-alpha.7",
+    "description": "FiveM server resource",
+    "main": "build/index.js",
+    "type": "module",
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "start": "node build/index.js"
+    },
+    "dependencies": {
+        "@aurora-mp/core": "^0.0.1-alpha.0",
+        "@aurora-mp/server": "^0.0.1-alpha.0",
+        "@aurora-mp/platform-fivem-server": "^0.0.1-alpha.0",
+        "reflect-metadata": "^0.2.2"
+    },
+    "devDependencies": {
+        "@citizenfx/server": "^2.0.23683-1",
+        "typescript": "^5.9.0",
+        "tsup": "^8.5.0"
+    }
+}

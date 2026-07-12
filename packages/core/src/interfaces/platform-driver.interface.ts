@@ -12,7 +12,6 @@ import { IWebView } from './webview.interface';
  */
 export interface IPlatformDriver<TPlayer = unknown> {
     /**
-     * @driver FiveMServerDriver
      * Initializes the driver and registers its internal listeners. This method
      * must be called once after construction and before any other method.
      * Calling it more than once throws an error.
@@ -22,7 +21,6 @@ export interface IPlatformDriver<TPlayer = unknown> {
     init?(): this;
 
     /**
-     * @driver FiveMServerDriver
      * Disposes the driver and unregisters all its internal listeners. This method
      * must be called once on resource stop, after the application has been closed.
      * Calling it more than once has no effect.

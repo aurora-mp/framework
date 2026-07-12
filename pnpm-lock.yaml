@@ -266,7 +266,13 @@ importers:
       '@aurora-mp/core':
         specifier: workspace:*
         version: link:../core
+      winston:
+        specifier: ^3.19.0
+        version: 3.19.0
     devDependencies:
+      '@types/node':
+        specifier: ^25.0.3
+        version: 25.0.3
       tsup:
         specifier: ^8.5.1
         version: 8.5.1(@swc/core@1.15.8)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)

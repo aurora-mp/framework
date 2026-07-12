@@ -4,7 +4,7 @@ import { createParamDecorator } from './create-param-decorator';
 /**
  * Parameter decorator for injecting the player object associated with an event.
  *
- * @param propertyKey Optional. A key to extract a specific property from the player object (e.g., 'name', 'ip').
+ * @param data Optional. A key to extract a specific property from the player object (e.g., 'name', 'ip').
  * If not provided, the entire player object is injected.
  * @example
  * ```ts

@@ -12,15 +12,27 @@ export default class Init extends Command {
         template: Flags.string({
             char: 't',
             description: 'Which platform template to use',
-            options: ['ragemp'] as const,
-            default: 'ragemp',
+            options: ['ragemp', 'fivem'] as const,
         }),
     };
 
     public async run(): Promise<void> {
         const { flags } = await this.parse(Init);
-        const { template } = flags;
         const templatesDir = path.join(__dirname, '..', '..', 'templates');
+
+        let template = flags.template;
+        if (!template) {
+            const answer = await inquirer.prompt<{ template: 'ragemp' | 'fivem' }>([
+                {
+                    type: 'list',
+                    name: 'template',
+                    message: 'Which platform template do you want to use?',
+                    choices: ['ragemp', 'fivem'],
+                    default: 'ragemp',
+                },
+            ]);
+            template = answer.template;
+        }
 
         // Prompt for project name
         const { projectName } = await inquirer.prompt<{ projectName: string }>([

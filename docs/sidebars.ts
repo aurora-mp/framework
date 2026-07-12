@@ -11,7 +11,46 @@ const sidebars = {
             label: 'Getting Started',
             collapsible: true,
             collapsed: false,
-            items: ['getting-started/requirements', 'getting-started/installation'],
+            items: [
+                'getting-started/requirements',
+                'getting-started/installation',
+                'getting-started/quickstart',
+            ],
+        },
+        {
+            type: 'category',
+            label: 'Fundamentals',
+            collapsible: true,
+            collapsed: false,
+            items: [
+                'fundamentals/providers',
+                'fundamentals/built-in-services',
+                'fundamentals/modules',
+                'fundamentals/controllers',
+                'fundamentals/guards',
+                'fundamentals/lifecycle-hooks',
+                'fundamentals/rpc',
+            ],
+        },
+        {
+            type: 'category',
+            label: 'WebViews',
+            collapsible: true,
+            collapsed: false,
+            items: [
+                'webviews/overview',
+                'webviews/managing',
+            ],
+        },
+        {
+            type: 'category',
+            label: 'Players',
+            collapsible: true,
+            collapsed: false,
+            items: [
+                'players/overview',
+                'players/components',
+            ],
         },
     ],
 

@@ -1,4 +1,4 @@
-import { Type } from '@core/types';
+import { Type } from '../types';
 
 /**
  * Provides contextual information for a controller event invocation.

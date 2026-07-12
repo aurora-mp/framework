@@ -19,5 +19,9 @@
 		"../packages/client/src/**/*",
 		"../packages/server/src/**/*",
 		"../packages/webview/src/**/*"
+	],
+	"exclude": [
+		"**/*.spec.ts",
+		"**/*.test.ts"
 	]
 }

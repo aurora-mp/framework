@@ -34,7 +34,7 @@ export class ModuleWrapper {
      * Creates a new ModuleWrapper.
      *
      * @param type The module’s class constructor.
-     * @param metadata The metadata extracted from the @Module decorator, including
+     * @param metadata The metadata extracted from the `@Module` decorator, including
      *                 imports, controllers, providers, and exports.
      */
     constructor(

@@ -5,7 +5,7 @@ import { MethodParamType } from '../../enums';
  * Parameter decorator to inject a specific property from the event payload.
  * It's an alias for `@Payload(key)`.
  *
- * @param propertyKey The key of the property to extract from the payload object.
+ * @param data The key of the property to extract from the payload object.
  * @example
  * ```ts
  * onMoneyTransfer(@Param('amount') amount: number)

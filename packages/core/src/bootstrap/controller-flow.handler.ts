@@ -22,7 +22,7 @@ export class ControllerFlowHandler {
     /**
      * Maps the ExecutionContext to an array of arguments for the controller method.
      * @param context The current execution context containing raw arguments.
-     * @param event Metadata for the event handler including parameter definitions.
+     * @param handler Metadata for the event handler including parameter definitions.
      * @returns An array of arguments to apply to the controller method.
      */
     public createArgs(context: ExecutionContext, handler: EventMetadata | RpcMetadata): unknown[] {

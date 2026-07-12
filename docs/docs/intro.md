@@ -48,4 +48,23 @@ Aurora Multiplayer currently provides first-class support for the following mult
 - **RAGE MP** (WIP) – A widely-used modding platform for GTA V, praised for its stability and extensive feature set.
 - **Other Runtimes** – Easily extendable: create adapters for any GTA multiplayer environment of your choice.
 
+## 📖 Where to start
+
+New to Aurora? Read the docs in this order:
+
+1. **[Requirements](/getting-started/requirements)** and **[Installation](/getting-started/installation)** – get a project scaffolded (or add the packages manually).
+2. **[Quickstart](/getting-started/quickstart)** – build a running server that logs a client event, end to end.
+3. **[Fundamentals](/fundamentals/providers)** – the concepts every gamemode uses. Read in sidebar order:
+   1. [Providers & DI](/fundamentals/providers)
+   2. [Built-in services](/fundamentals/built-in-services)
+   3. [Modules](/fundamentals/modules)
+   4. [Controllers & events](/fundamentals/controllers)
+   5. [Guards](/fundamentals/guards)
+   6. [Lifecycle hooks](/fundamentals/lifecycle-hooks)
+   7. [RPC](/fundamentals/rpc)
+4. Then dip into whichever subsystem you need: **[Players](/players/overview)**, **[WebViews](/webviews/overview)**.
+5. The **[API reference](/api/core)** is auto-generated from source and covers every exported symbol.
+
+If you just want a quick lookup, the API reference is fine to jump straight into.
+
 # WIP

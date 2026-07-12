@@ -1,8 +1,7 @@
 import { ApplicationFactory, AuroraPlugin, Module, Type } from '@aurora-mp/core';
-import { ServerModule } from '@aurora-mp/server';
+import { ServerModule, winstonLogger } from '@aurora-mp/server';
 import { RageServerDriver } from './driver';
 import { PlatformModule } from './platform.module';
-import { winstonLogger } from './configs/winston.logger';
 
 /**
  * Creates and initializes an application specifically for the RAGE Multiplayer Server platform.
