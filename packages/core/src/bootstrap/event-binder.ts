@@ -1,6 +1,6 @@
 import { EventType } from '../enums';
 import { CONTROLLER_EVENTS_KEY, CONTROLLER_PARAMS_KEY, GUARDS_METADATA_KEY } from '../constants';
-import { ExecutionContext, IPlatformDriver } from '../interfaces';
+import type { ExecutionContext, ILogger, IPlatformDriver } from '../interfaces';
 import { PlayerRegistry } from '../player/player-registry';
 import { EventMetadata, Type } from '../types';
 import { ControllerFlowHandler } from './controller-flow.handler';
@@ -12,6 +12,8 @@ import { ControllerFlowHandler } from './controller-flow.handler';
  * @public
  */
 export class EventBinder {
+    private logger: ILogger = console;
+
     constructor(
         private readonly platformDriver: IPlatformDriver,
         private readonly flowHandler: ControllerFlowHandler,
@@ -38,17 +40,44 @@ export class EventBinder {
 
                 switch (handler.type) {
                     case EventType.ON:
+                        if (!this.platformDriver.on) {
+                            this.warnUnsupported(handler.type);
+                            break;
+                        }
                         this.platformDriver.on(handler.name, dispatcher);
                         break;
                     case EventType.ON_CLIENT:
-                        if (this.platformDriver.onClient) this.platformDriver.onClient(handler.name, dispatcher);
+                        if (!this.platformDriver.onClient) {
+                            this.warnUnsupported(handler.type);
+                            break;
+                        }
+                        this.platformDriver.onClient(handler.name, dispatcher);
                         break;
                     case EventType.ON_SERVER:
-                        if (this.platformDriver.onServer) this.platformDriver.onServer(handler.name, dispatcher);
+                        if (!this.platformDriver.onServer) {
+                            this.warnUnsupported(handler.type);
+                            break;
+                        }
+                        this.platformDriver.onServer(handler.name, dispatcher);
                         break;
+                    case EventType.ON_NUI:
+                        if (!this.platformDriver.onNuiCallback) {
+                            this.warnUnsupported(handler.type);
+                            break;
+                        }
+                        this.platformDriver.onNuiCallback(handler.name, (payload) => dispatcher(payload));
+                        break;
+                    default:
+                        this.logger.warn(`[Aurora] Unknown event type "${handler.type}" for event "${handler.name}".`);
                 }
             }
         }
+    }
+
+    private warnUnsupported(handlerType: EventType) {
+        this.logger.warn(
+            `[Aurora] Driver ${this.platformDriver.constructor.name} does not support event type "${handlerType}".`,
+        );
     }
 
     /**
@@ -79,17 +108,16 @@ export class EventBinder {
 
                 const allowed = await this.flowHandler.canActivate(context);
                 if (!allowed) {
-                    console.warn(`[Aurora] Access denied for event "${handler.name}"`);
+                    this.logger.warn(`[Aurora] Access denied for event "${handler.name}"`);
                     return;
                 }
 
                 const methodArgs = this.flowHandler.createArgs(context, handler);
                 await (instance[handler.methodName] as (...a: unknown[]) => Promise<void> | void)(...methodArgs);
             } catch (error) {
-                console.error(
-                    `[Aurora] Error handling event "${handler.name}" on "${(instance as { constructor: { name: string } }).constructor.name}"`,
-                    error,
-                );
+                const source = (instance as { constructor: { name: string } }).constructor.name;
+                const detail = error instanceof Error ? error.message : String(error);
+                this.logger.error(`[Aurora] Error handling event "${handler.name}" on "${source}": ${detail}`);
             }
         };
     }

@@ -24,4 +24,10 @@ export enum EventType {
      * Listens only to server-side events.
      */
     ON_SERVER = 'onServer',
+
+    /**
+     * Listens to events triggered by the single-instance NUI on platforms
+     * that use a fetch/callback style bridge (e.g. FiveM's RegisterNuiCallback).
+     */
+    ON_NUI = 'onNui',
 }

@@ -12,6 +12,6 @@ type ConfigService = {
 @Injectable()
 export class LoggerService extends WinstonLoggerService {
     constructor(@Inject(CONFIG_SERVICE) config: ConfigService) {
-        super(config, {});
+        super(config, { label: 'fivem-server', useFivemColors: true });
     }
 }

@@ -73,6 +73,7 @@ export class ApplicationFactory {
      */
     private constructor(private readonly platformDriver: IPlatformDriver) {
         this.instanceContainer.register(PLATFORM_DRIVER, this.platformDriver);
+        this.instanceContainer.register(LOGGER_SERVICE, console);
         this.playerRegistry = new PlayerRegistry();
         this.instanceContainer.register(PlayerRegistry, this.playerRegistry);
         this.instanceContainer.register(PlayerComponentRegistry, this.componentRegistry);
@@ -300,8 +301,6 @@ export class ApplicationFactory {
         } catch {
             this.logger.warn(`[Aurora] LOGGER_SERVICE not found. Falling back to console logging.`);
         }
-
-        this.flowHandler.setLogger(this.logger);
     }
 
     /**

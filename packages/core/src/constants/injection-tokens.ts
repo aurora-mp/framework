@@ -44,3 +44,10 @@ export const PLATFORM_DRIVER = Symbol.for('aurora:platform:driver');
  * creating and managing in-game WebView instances.
  */
 export const WEBVIEW_SERVICE = Symbol.for('aurora:webview:service');
+
+/**
+ * Dependency injection token for the NUI service.
+ * Use this symbol to register or retrieve the service responsible for
+ * emitting events and invoking RPCs on the single-instance NUI (e.g. FiveM).
+ */
+export const NUI_SERVICE = Symbol.for('aurora:nui:service');

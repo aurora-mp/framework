@@ -1,4 +1,4 @@
-import { IPlatformDriver, IWebView, RpcError, Unsubscribe } from '@aurora-mp/core';
+import { IPlatformDriver, IWebView, RpcError, Unsubscribe, WebViewEvents } from '@aurora-mp/core';
 import {
     RPC_INVOKE_EVENT_PREFIX,
     RPC_INVOKE_RESPONSE_EVENT,
@@ -230,23 +230,58 @@ export class FiveMClientDriver implements IPlatformDriver {
             void this.runRpcHandler(rpcName, reqId, handler, args);
         });
     }
-
-    public createWebview(id: string | number, _url: string, focused: boolean, hidden: boolean): IWebView {
+    
+    public createNuiDriver(id: string | number, focused: boolean, hasCursor: boolean): IWebView {
         const existing = this.webviews.get(id);
         if (existing) existing.destroy();
 
-        if (!hidden) SetNuiFocus(focused, focused);
+        SetNuiFocus(focused, hasCursor);
 
         const webview = new FiveMNUIWebView(id, this.webviewRpcTimeoutMs, this.onError);
         this.webviews.set(id, webview);
+
+        this.registerNuiBridges();
+
         return webview;
     }
 
-    public destroyWebview(id: string | number): void {
-        const webview = this.webviews.get(id);
-        if (!webview) return;
-        this.webviews.delete(id);
-        webview.destroy();
+    /**
+     * Registers the fetch endpoints the CEF adapter uses to reach the server:
+     * - `EMIT_SERVER` -> `emitNet(eventName, ...args)`
+     * - `INVOKE_SERVER_RPC` -> `invokeServer(rpcName, ...args)` and returns the result
+     */
+    private registerNuiBridges(): void {
+        this.onNuiCallback(WebViewEvents.EMIT_SERVER, (payload) => {
+            const data = payload as { eventName?: unknown; args?: unknown };
+            if (typeof data.eventName !== 'string') return;
+            const args = Array.isArray(data.args) ? data.args : [];
+            this.safeEmitNet(data.eventName, ...args);
+        });
+
+        this.onNuiCallback(WebViewEvents.INVOKE_SERVER_RPC, async (payload) => {
+            const data = payload as { rpcName?: unknown; args?: unknown };
+            if (typeof data.rpcName !== 'string') {
+                throw new RpcError('invokeServerRpc bridge missing rpcName', 'RPC_BAD_REQUEST');
+            }
+            const args = Array.isArray(data.args) ? data.args : [];
+            return this.invokeServer(data.rpcName, ...args);
+        });
+    }
+
+    public onNuiCallback(
+        name: string,
+        handler: (payload: unknown) => Promise<unknown> | unknown,
+    ): void {
+        RegisterNuiCallback(name, async (data: unknown, cb: (response: unknown) => void) => {
+            try {
+                const result = await handler(data);
+                cb(result ?? {});
+            } catch (error) {
+                this.onError?.(error, { rpcName: name });
+                const message = error instanceof RpcError ? error.message : this.genericErrorMessage;
+                cb({ error: message });
+            }
+        });
     }
 
     /**

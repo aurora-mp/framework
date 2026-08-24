@@ -1,3 +1,4 @@
+/// <reference types="@citizenfx/server" />
 import { Injectable, type IConfigLoader } from '@aurora-mp/core';
 const { readFileSync, existsSync } = require('fs');
 const path = require('path');
@@ -5,7 +6,9 @@ const path = require('path');
 @Injectable()
 export class ConfigLoader implements IConfigLoader {
     public load(): Record<string, string> {
-        const envPath = path.resolve(process.cwd(), '.env');
+        const envPath = path
+          .resolve(GetResourcePath(GetCurrentResourceName()), '.env');
+
         const config: Record<string, string> = {};
 
         if (!existsSync(envPath)) {

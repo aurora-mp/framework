@@ -192,6 +192,32 @@ export interface IPlatformDriver<TPlayer = unknown> {
     destroyWebview?(id: string | number): void;
 
     /**
+     * Registers the messaging handle for the single-instance NUI that
+     * platforms like FiveM expose per resource. Unlike `createWebview`, this
+     * does not accept a URL because the NUI page is declared by the platform
+     * manifest (e.g. `ui_page` in `fxmanifest.lua`).
+     *
+     * @param id - Identifier used to route messages internally.
+     * @param focused - Whether the NUI should receive input focus at init.
+     * @param cursor - Whether the mouse cursor should be visible at init.
+     * @returns A platform-agnostic {@link IWebView} wrapper for messaging.
+     */
+    createNuiDriver?(id: string | number, focused: boolean, cursor: boolean): IWebView;
+
+    /**
+     * Registers a handler for a callback invoked by the NUI page (e.g. via
+     * `fetch('https://cfx-nui-<res>/name')` on FiveM). The handler receives
+     * the JSON payload from the NUI and returns a value that is sent back as
+     * the fetch response body. Returning `undefined` still unblocks the fetch
+     * with an empty object.
+     *
+     * @param name - Callback name registered on the platform side.
+     * @param handler - Called with the payload from the NUI.
+     * @returns An {@link Unsubscribe} handle where the platform allows removal.
+     */
+    onNuiCallback?(name: string, handler: (payload: unknown) => Promise<unknown> | unknown): void | Unsubscribe;
+
+    /**
      * Reads the display name of the player identified by `source`. Backs the
      * `PlayerEntity.name` getter. Return `undefined` when the platform cannot
      * resolve the player (dropped, or pre-join).

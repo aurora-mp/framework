@@ -1,5 +1,11 @@
-import { WebViewEvents, WebviewRpcRequest, WebviewRpcResponse } from '@aurora-mp/core';
+import { NUI_ID, WebViewEvents, WebviewRpcRequest, WebviewRpcResponse } from '@aurora-mp/core';
 import { IWebViewPlatform } from '../interfaces';
+
+/**
+ * FiveM injects `GetParentResourceName` into every NUI page. Used as a runtime
+ * probe for the FiveM CEF adapter.
+ */
+type FiveMWindow = Window & { GetParentResourceName?: () => string };
 
 export class WebviewService {
     private platform: IWebViewPlatform | null;
@@ -115,100 +121,239 @@ export class WebviewService {
     }
 
     private getPlatform(): IWebViewPlatform | null {
-        if (typeof window !== 'undefined' && (window as any).mp) {
-            const mp = (window as any).mp;
+        if (typeof window === 'undefined') return null;
 
-            const rpcHandlers = new Map<string, (...args: any[]) => Promise<unknown> | unknown>();
-            let rpcListenerRegistered = false;
+        if ((window as any).mp) {
+            return this.createRageMPPlatform();
+        }
 
-            return {
-                // subscribe to a normal client event
-                on: (event: string, listener: (...args: any[]) => void) => mp.events.add(event, listener),
-                off: (event: string, listener: (...args: any[]) => void) => mp.events.remove(event, listener),
-
-                // alias for on(), same on the client
-                onServer: (event: string, listener: (...args: any[]) => void) => mp.events.add(event, listener),
-
-                // emit a normal client event
-                emit: (event: string, ...args: any[]) => mp.events.call(event, ...args),
-
-                // alias for emit(), same on the client
-                emitServer: (event: string, ...args: any[]) => mp.events.call(event, ...args),
-
-                /**
-                 * Sends an RPC to the client and returns a Promise
-                 * Invoke a client-side RPC; returns a Promise of the response
-                 */
-                invokeClientRpc: <T = any>(rpcName: string, ...args: any[]): Promise<T> =>
-                    mp.events.callProc(rpcName, ...args),
-
-                /**
-                 * onClientRpc is **not** for invoking, but for registering
-                 * a handler when the server calls a client RPC via callProc.
-                 * You need to use addProc on the client to receive those.
-                 */
-                onClientRpc: <TArgs extends any[] = any[], TResult = any>(
-                    rpcName: string,
-                    handler: (...args: TArgs) => Promise<TResult> | TResult,
-                ): (() => void) => {
-                    const wrappedHandler = async (...args: TArgs) => {
-                        try {
-                            return await handler(...args);
-                        } catch (err: any) {
-                            return { error: err.message ?? String(err) };
-                        }
-                    };
-                    mp.events.addProc(rpcName, wrappedHandler);
-                    return () => mp.events.remove(rpcName, wrappedHandler);
-                },
-
-                /**
-                 * Sends an RPC to the server and returns a Promise
-                 * Invoke a server-side RPC; returns a Promise of the response
-                 */
-                invokeServerRpc: <T = any>(rpcName: string, ...args: any[]): Promise<T> =>
-                    mp.events.callProc(rpcName, ...args),
-
-                /**
-                 * Register a handler that the client can invoke via IWebView.invoke().
-                 * Uses a single shared listener that demultiplexes by procedure name.
-                 * The response is sent back via INVOKE_WEBVIEW_RPC_RESPONSE.
-                 */
-                onRpc: (rpcName: string, handler: (...args: any[]) => Promise<unknown> | unknown): void => {
-                    rpcHandlers.set(rpcName, handler);
-
-                    if (!rpcListenerRegistered) {
-                        rpcListenerRegistered = true;
-
-                        mp.events.add(WebViewEvents.INVOKE_WEBVIEW_RPC, async (rawPayload: string) => {
-                            let req: WebviewRpcRequest;
-                            try {
-                                req = JSON.parse(rawPayload) as WebviewRpcRequest;
-                            } catch {
-                                console.error('[Aurora][RPC] Failed to parse INVOKE_WEBVIEW_RPC payload:', rawPayload);
-                                return;
-                            }
-
-                            const fn = rpcHandlers.get(req.name);
-                            const resp: WebviewRpcResponse = { id: req.id };
-
-                            try {
-                                if (fn) {
-                                    resp.result = await fn(...req.args);
-                                } else {
-                                    resp.error = `No handler registered for webview RPC "${req.name}"`;
-                                }
-                            } catch (err: any) {
-                                resp.error = err?.message ?? String(err);
-                            }
-
-                            mp.events.call(WebViewEvents.INVOKE_WEBVIEW_RPC_RESPONSE, JSON.stringify(resp));
-                        });
-                    }
-                },
-            };
+        const fivem = window as FiveMWindow;
+        if (typeof fivem.GetParentResourceName === 'function') {
+            return this.createFiveMPlatform(fivem.GetParentResourceName());
         }
 
         return null;
+    }
+
+    private createRageMPPlatform(): IWebViewPlatform {
+        const mp = (window as any).mp;
+
+        const rpcHandlers = new Map<string, (...args: any[]) => Promise<unknown> | unknown>();
+        let rpcListenerRegistered = false;
+
+        return {
+            on: (event: string, listener: (...args: any[]) => void) => mp.events.add(event, listener),
+            off: (event: string, listener: (...args: any[]) => void) => mp.events.remove(event, listener),
+            onServer: (event: string, listener: (...args: any[]) => void) => mp.events.add(event, listener),
+            emit: (event: string, ...args: any[]) => mp.events.call(event, ...args),
+            emitServer: (event: string, ...args: any[]) => mp.events.call(event, ...args),
+
+            invokeClientRpc: <T = any>(rpcName: string, ...args: any[]): Promise<T> =>
+                mp.events.callProc(rpcName, ...args),
+
+            onClientRpc: <TArgs extends any[] = any[], TResult = any>(
+                rpcName: string,
+                handler: (...args: TArgs) => Promise<TResult> | TResult,
+            ): (() => void) => {
+                const wrappedHandler = async (...args: TArgs) => {
+                    try {
+                        return await handler(...args);
+                    } catch (err: any) {
+                        return { error: err.message ?? String(err) };
+                    }
+                };
+                mp.events.addProc(rpcName, wrappedHandler);
+                return () => mp.events.remove(rpcName, wrappedHandler);
+            },
+
+            invokeServerRpc: <T = any>(rpcName: string, ...args: any[]): Promise<T> =>
+                mp.events.callProc(rpcName, ...args),
+
+            onRpc: (rpcName: string, handler: (...args: any[]) => Promise<unknown> | unknown): void => {
+                rpcHandlers.set(rpcName, handler);
+
+                if (!rpcListenerRegistered) {
+                    rpcListenerRegistered = true;
+
+                    mp.events.add(WebViewEvents.INVOKE_WEBVIEW_RPC, async (rawPayload: string) => {
+                        let req: WebviewRpcRequest;
+                        try {
+                            req = JSON.parse(rawPayload) as WebviewRpcRequest;
+                        } catch {
+                            console.error('[Aurora][RPC] Failed to parse INVOKE_WEBVIEW_RPC payload:', rawPayload);
+                            return;
+                        }
+
+                        const fn = rpcHandlers.get(req.name);
+                        const resp: WebviewRpcResponse = { id: req.id };
+
+                        try {
+                            if (fn) {
+                                resp.result = await fn(...req.args);
+                            } else {
+                                resp.error = `No handler registered for webview RPC "${req.name}"`;
+                            }
+                        } catch (err: any) {
+                            resp.error = err?.message ?? String(err);
+                        }
+
+                        mp.events.call(WebViewEvents.INVOKE_WEBVIEW_RPC_RESPONSE, JSON.stringify(resp));
+                    });
+                }
+            },
+        };
+    }
+
+    /**
+     * FiveM has one CEF per resource. Client -> CEF goes through `SendNUIMessage`
+     * (which reaches us as a `window.message` event), and CEF -> client goes through
+     * a `fetch('https://cfx-nui-<res>/<name>')` that lands in a `RegisterNuiCallback`
+     * on the game side.
+     *
+     * The client driver wraps outbound messages as `{ type, id, event, args }`; we
+     * filter by `id === NUI_ID` here.
+     */
+    private createFiveMPlatform(resourceName: string): IWebViewPlatform {
+        const eventListeners = new Map<string, Set<(...args: any[]) => void>>();
+        const rpcHandlers = new Map<string, (...args: any[]) => Promise<unknown> | unknown>();
+        let messageListenerAttached = false;
+
+        const ensureMessageListener = () => {
+            if (messageListenerAttached) return;
+            messageListenerAttached = true;
+
+            window.addEventListener('message', (event: MessageEvent) => {
+                const data = event.data;
+                if (!data || typeof data !== 'object' || data.id !== NUI_ID) return;
+
+                if (data.type === 'aurora:emit' && typeof data.event === 'string') {
+                    const set = eventListeners.get(data.event);
+                    if (!set) return;
+                    const args = Array.isArray(data.args) ? data.args : [];
+                    for (const fn of set) {
+                        try {
+                            fn(...args);
+                        } catch (err) {
+                            console.error(`[Aurora] Listener for "${data.event}" threw:`, err);
+                        }
+                    }
+                    return;
+                }
+
+                if (
+                    data.type === 'aurora:invoke' &&
+                    typeof data.event === 'string' &&
+                    typeof data.reqId === 'string'
+                ) {
+                    const handler = rpcHandlers.get(data.event);
+                    const responseUrl = `https://${resourceName}/aurora:invoke:${NUI_ID}:response`;
+                    const args = Array.isArray(data.args) ? data.args : [];
+
+                    (async () => {
+                        const payload: { reqId: string; result?: unknown; error?: string } = {
+                            reqId: data.reqId,
+                        };
+                        if (!handler) {
+                            payload.error = `No handler registered for webview RPC "${data.event}"`;
+                        } else {
+                            try {
+                                payload.result = await handler(...args);
+                            } catch (err: any) {
+                                payload.error = err?.message ?? String(err);
+                            }
+                        }
+
+                        void fetch(responseUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload),
+                        }).catch((err) =>
+                            console.error('[Aurora] Failed to POST NUI RPC response:', err),
+                        );
+                    })();
+                }
+            });
+        };
+
+        const post = async <T = unknown>(name: string, body: unknown): Promise<T> => {
+            const res = await fetch(`https://${resourceName}/${name}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) throw new Error(`NUI callback "${name}" returned ${res.status}`);
+            const text = await res.text();
+            if (!text) return undefined as T;
+            const parsed = JSON.parse(text);
+            if (parsed && typeof parsed === 'object' && 'error' in parsed && parsed.error) {
+                throw new Error(String(parsed.error));
+            }
+            return parsed as T;
+        };
+
+        return {
+            on(eventName, listener) {
+                ensureMessageListener();
+                let set = eventListeners.get(eventName);
+                if (!set) {
+                    set = new Set();
+                    eventListeners.set(eventName, set);
+                }
+                set.add(listener);
+            },
+
+            off(eventName, listener) {
+                eventListeners.get(eventName)?.delete(listener);
+            },
+
+            onServer(eventName, listener) {
+                ensureMessageListener();
+                let set = eventListeners.get(eventName);
+                if (!set) {
+                    set = new Set();
+                    eventListeners.set(eventName, set);
+                }
+                set.add(listener);
+            },
+
+            emit(eventName, ...args) {
+                void fetch(`https://${resourceName}/${eventName}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ args }),
+                }).catch((err) =>
+                    console.error(`[Aurora] Failed to emit NUI event "${eventName}":`, err),
+                );
+            },
+
+            emitServer(_bridge, eventName, ...args) {
+                void fetch(`https://${resourceName}/${WebViewEvents.EMIT_SERVER}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ eventName, args }),
+                }).catch((err) =>
+                    console.error(`[Aurora] Failed to emit server event "${eventName}":`, err),
+                );
+            },
+
+            async invokeClientRpc<T = unknown>(rpcName: string, ...args: any[]): Promise<T> {
+                return post<T>(rpcName, { args });
+            },
+
+            onClientRpc(rpcName, handler) {
+                ensureMessageListener();
+                rpcHandlers.set(rpcName, handler as any);
+                return () => rpcHandlers.delete(rpcName);
+            },
+
+            async invokeServerRpc<T = unknown>(_bridge: string, rpcName?: string, ...args: any[]): Promise<T> {
+                return post<T>(WebViewEvents.INVOKE_SERVER_RPC, { rpcName, args });
+            },
+
+            onRpc(rpcName, handler) {
+                ensureMessageListener();
+                rpcHandlers.set(rpcName, handler as any);
+            },
+        };
     }
 }

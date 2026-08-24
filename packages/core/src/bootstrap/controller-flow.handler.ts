@@ -1,7 +1,7 @@
 import { EventMetadata, RpcMetadata, Type } from '../types';
 import { ExecutionContext, Guard, ILogger, MethodParameter } from '../interfaces';
 import { MethodParamType } from '../enums';
-import { GUARDS_METADATA_KEY } from '../constants';
+import { GUARDS_METADATA_KEY, LOGGER_SERVICE } from '../constants';
 import { Container } from '../di';
 
 /**
@@ -12,11 +12,9 @@ import { Container } from '../di';
  */
 export class ControllerFlowHandler {
     private logger: ILogger = console;
-
-    constructor(private readonly container: Container) {}
-
-    public setLogger(logger: ILogger) {
-        this.logger = logger;
+    
+    constructor(private readonly container: Container) {
+      this.logger = this.container.resolve<ILogger>(LOGGER_SERVICE);
     }
 
     /**

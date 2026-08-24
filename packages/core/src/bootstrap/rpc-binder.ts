@@ -1,11 +1,13 @@
 import { RpcType } from '../enums';
 import { CONTROLLER_PARAMS_KEY, CONTROLLER_RPCS_KEY, GUARDS_METADATA_KEY } from '../constants';
-import { ExecutionContext, IPlatformDriver } from '../interfaces';
+import type { ExecutionContext, ILogger, IPlatformDriver } from '../interfaces';
 import { PlayerRegistry } from '../player/player-registry';
 import { RpcMetadata, Type } from '../types';
 import { ControllerFlowHandler } from './controller-flow.handler';
 
 export class RpcBinder {
+    logger: ILogger = console;
+    
     constructor(
         private readonly platformDriver: IPlatformDriver,
         private readonly flowHandler: ControllerFlowHandler,
@@ -16,12 +18,10 @@ export class RpcBinder {
         for (const [controllerType, controllerInstance] of controllers) {
             const rpcs: RpcMetadata[] = Reflect.getMetadata(CONTROLLER_RPCS_KEY, controllerType) || [];
             for (const rpc of rpcs) {
-                // Attach runtime param metadata
                 const params =
                     Reflect.getOwnMetadata(CONTROLLER_PARAMS_KEY, controllerType.prototype, rpc.methodName) || [];
                 rpc.params = params;
 
-                // Attach runtime guards metadata
                 const guards =
                     Reflect.getOwnMetadata(GUARDS_METADATA_KEY, controllerType.prototype, rpc.methodName) ?? [];
                 rpc.guards = guards;
@@ -30,14 +30,37 @@ export class RpcBinder {
 
                 switch (rpc.type) {
                     case RpcType.ON_CLIENT:
-                        if (this.platformDriver.onRpcServer) this.platformDriver.onRpcServer(rpc.name, dispatcher);
+                        if (!this.platformDriver.onRpcServer) {
+                            this.warnUnsupported(rpc.type);
+                            break;
+                        }
+                        this.platformDriver.onRpcServer(rpc.name, dispatcher);
                         break;
                     case RpcType.ON_SERVER:
-                        if (this.platformDriver.onRpcClient) this.platformDriver.onRpcClient(rpc.name, dispatcher);
+                        if (!this.platformDriver.onRpcClient) {
+                            this.warnUnsupported(rpc.type);
+                            break;
+                        }
+                        this.platformDriver.onRpcClient(rpc.name, dispatcher);
                         break;
+                    case RpcType.ON_NUI:
+                        if (!this.platformDriver.onNuiCallback) {
+                            this.warnUnsupported(rpc.type);
+                            break;
+                        }
+                        this.platformDriver.onNuiCallback(rpc.name, (payload) => dispatcher(payload));
+                        break;
+                    default:
+                        this.logger.warn(`[Aurora] Unknown RPC type "${rpc.type}" for RPC "${rpc.name}".`);
                 }
             }
         }
+    }
+
+    private warnUnsupported(rpcType: RpcType) {
+        this.logger.warn(
+            `[Aurora] Driver ${this.platformDriver.constructor.name} does not support RPC type "${rpcType}".`,
+        );
     }
 
     private createDispatcher(
@@ -66,7 +89,7 @@ export class RpcBinder {
 
             const allowed = await this.flowHandler.canActivate(context);
             if (!allowed) {
-                console.warn(`[Aurora] Access denied for RPC "${rpc.name}"`);
+                this.logger.warn(`[Aurora] Access denied for RPC "${rpc.name}"`);
                 return;
             }
 
