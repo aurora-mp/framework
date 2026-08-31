@@ -146,6 +146,15 @@ export class FiveMClientDriver implements IPlatformDriver {
             }
         });
 
+        // Server -> client -> CEF: route dispatched webview events to the target NUI
+        this.addNetListener(WebViewEvents.DISPATCH, (...args: unknown[]) => {
+            const [id, eventName, ...rest] = args as [string | number, string, ...unknown[]];
+            if (typeof eventName !== 'string') return;
+            const webview = this.webviews.get(id);
+            if (!webview) return;
+            webview.emit(eventName, ...rest);
+        });
+
         return this;
     }
 

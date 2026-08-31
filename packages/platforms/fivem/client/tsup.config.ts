@@ -1,5 +1,5 @@
 import { defineConfig } from 'tsup';
-import packageJson from './package.json' assert { type: 'json' };
+import packageJson from './package.json' with { type: 'json' };
 
 export default defineConfig({
     entry: ['src/index.ts'],
