@@ -23,5 +23,7 @@ export function createRageApplication(rootModule: Type) {
     class InternalRootModule {}
 
     const driver = new RageClientDriver();
+
+    mp.console.logWarning('[Aurora] RAGE Multiplayer Server driver is deprecated and will be removed in a future release. Please migrate to the FiveM driver.');
     return ApplicationFactory.create(InternalRootModule, driver);
 }

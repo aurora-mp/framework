@@ -1,6 +1,8 @@
 import { EventType } from '../enums';
 import { CONTROLLER_EVENTS_KEY, CONTROLLER_PARAMS_KEY, GUARDS_METADATA_KEY } from '../constants';
-import { ExecutionContext, IPlatformDriver } from '../interfaces';
+import type { ExecutionContext, ILogger, IPlatformDriver } from '../interfaces';
+import { decodePlayerRefs } from '../player/player-entity-ref';
+import { PlayerRegistry } from '../player/player-registry';
 import { EventMetadata, Type } from '../types';
 import { ControllerFlowHandler } from './controller-flow.handler';
 
@@ -14,7 +16,12 @@ export class EventBinder {
     constructor(
         private readonly platformDriver: IPlatformDriver,
         private readonly flowHandler: ControllerFlowHandler,
+        private readonly playerRegistry?: PlayerRegistry,
     ) {}
+
+    private get logger(): ILogger {
+        return this.flowHandler.logger;
+    }
 
     /**
      * Binds all controller event handlers for a given set of modules/controllers.
@@ -24,33 +31,56 @@ export class EventBinder {
         for (const [controllerType, controllerInstance] of controllersWithInstances) {
             const eventHandlers: EventMetadata[] = Reflect.getMetadata(CONTROLLER_EVENTS_KEY, controllerType) || [];
             for (const handler of eventHandlers) {
-                // Attach runtime param metadata
                 const params =
                     Reflect.getOwnMetadata(CONTROLLER_PARAMS_KEY, controllerType.prototype, handler.methodName) ?? [];
                 handler.params = params;
 
-                // Attach runtime guards metadata
                 const guards =
                     Reflect.getOwnMetadata(GUARDS_METADATA_KEY, controllerType.prototype, handler.methodName) ?? [];
                 handler.guards = guards;
 
-                // Dispatcher = wraps flowHandler param injection
                 const dispatcher = this.createDispatcher(controllerInstance, handler);
 
-                // Register to platform
                 switch (handler.type) {
                     case EventType.ON:
+                        if (!this.platformDriver.on) {
+                            this.warnUnsupported(handler.type);
+                            break;
+                        }
                         this.platformDriver.on(handler.name, dispatcher);
                         break;
                     case EventType.ON_CLIENT:
-                        if (this.platformDriver.onClient) this.platformDriver.onClient(handler.name, dispatcher);
+                        if (!this.platformDriver.onClient) {
+                            this.warnUnsupported(handler.type);
+                            break;
+                        }
+                        this.platformDriver.onClient(handler.name, dispatcher);
                         break;
                     case EventType.ON_SERVER:
-                        if (this.platformDriver.onServer) this.platformDriver.onServer(handler.name, dispatcher);
+                        if (!this.platformDriver.onServer) {
+                            this.warnUnsupported(handler.type);
+                            break;
+                        }
+                        this.platformDriver.onServer(handler.name, dispatcher);
                         break;
+                    case EventType.ON_NUI:
+                        if (!this.platformDriver.onNuiCallback) {
+                            this.warnUnsupported(handler.type);
+                            break;
+                        }
+                        this.platformDriver.onNuiCallback(handler.name, (payload) => dispatcher(payload));
+                        break;
+                    default:
+                        this.logger.warn(`[Aurora] Unknown event type "${handler.type}" for event "${handler.name}".`);
                 }
             }
         }
+    }
+
+    private warnUnsupported(handlerType: EventType) {
+        this.logger.warn(
+            `[Aurora] Driver ${this.platformDriver.constructor.name} does not support event type "${handlerType}".`,
+        );
     }
 
     /**
@@ -60,31 +90,38 @@ export class EventBinder {
         instance: Record<string, unknown>,
         handler: EventMetadata,
     ): (...args: unknown[]) => Promise<void> {
-        return async (...args: unknown[]) => {
+        return async (...rawArgs: unknown[]) => {
+            const capturedSource = this.platformDriver.getInvocationSource?.();
             try {
+                const args = decodePlayerRefs(rawArgs, this.playerRegistry);
+                const wrappedPlayer =
+                    capturedSource !== undefined ? this.playerRegistry?.get(capturedSource) : undefined;
+                const contextPlayer =
+                    wrappedPlayer ?? (handler.type === EventType.ON_CLIENT ? args[0] : undefined);
+
                 const context: ExecutionContext = {
                     name: handler.name,
                     args,
                     payload: args,
-                    player: handler.type === EventType.ON_CLIENT ? args[0] : undefined,
+                    player: contextPlayer,
+                    ...(capturedSource !== undefined ? { source: capturedSource } : {}),
                     getClass: () => instance.constructor as Type,
                     getHandler: () => instance[handler.methodName] as Function,
-                    getPlayer: () => args[0],
+                    getPlayer: () => contextPlayer,
                 };
 
                 const allowed = await this.flowHandler.canActivate(context);
                 if (!allowed) {
-                    console.warn(`[Aurora] Access denied for event "${handler.name}"`);
+                    this.logger.warn(`[Aurora] Access denied for event "${handler.name}"`);
                     return;
                 }
 
                 const methodArgs = this.flowHandler.createArgs(context, handler);
                 await (instance[handler.methodName] as (...a: unknown[]) => Promise<void> | void)(...methodArgs);
             } catch (error) {
-                console.error(
-                    `[Aurora] Error handling event "${handler.name}" on "${(instance as { constructor: { name: string } }).constructor.name}"`,
-                    error,
-                );
+                const source = (instance as { constructor: { name: string } }).constructor.name;
+                const detail = error instanceof Error ? error.message : String(error);
+                this.logger.error(`[Aurora] Error handling event "${handler.name}" on "${source}": ${detail}`);
             }
         };
     }

@@ -1,0 +1,17 @@
+{
+	"extends": "../../../../tsconfig.base.json",
+	"compilerOptions": {
+		"types": [
+			"./node_modules/@citizenfx/client"
+		],
+		"outDir": "dist"
+	},
+	"include": [
+		"src/**/*.ts",
+		"package.json"
+	],
+	"exclude": [
+		"node_modules",
+		"dist"
+	]
+}

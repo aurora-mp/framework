@@ -1,6 +1,6 @@
-import { EVENT_SERVICE, Global, Module, RPC_SERVICE, WEBVIEW_SERVICE } from '@aurora-mp/core';
+import { EVENT_SERVICE, Global, Module, NUI_SERVICE, RPC_SERVICE } from '@aurora-mp/core';
 import { EventService } from './services';
-import { WebviewService } from './services/webview.service';
+import { NuiService } from './services/nui.service';
 import { RpcService } from './services/rpc.service';
 
 /**
@@ -18,10 +18,10 @@ import { RpcService } from './services/rpc.service';
             useClass: RpcService,
         },
         {
-            provide: WEBVIEW_SERVICE,
-            useClass: WebviewService,
+            provide: NUI_SERVICE,
+            useClass: NuiService,
         },
     ],
-    exports: [EVENT_SERVICE, RPC_SERVICE, WEBVIEW_SERVICE],
+    exports: [EVENT_SERVICE, RPC_SERVICE, NUI_SERVICE],
 })
 export class ClientModule {}

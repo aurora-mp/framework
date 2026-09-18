@@ -1,28 +1,17 @@
-import { Injectable, type ILogger, CONFIG_SERVICE, type IConfigService, Inject } from '@aurora-mp/core';
+import {
+    CONFIG_SERVICE,
+    Inject,
+    Injectable,
+} from '@aurora-mp/core';
+import { WinstonLoggerService } from '@aurora-mp/server';
+
+type ConfigService = {
+    get<T = any>(key: string, defaultValue?: T): T;
+};
 
 @Injectable()
-export class LoggerService implements ILogger {
-    private readonly isDebug: boolean;
-
-    constructor(@Inject(CONFIG_SERVICE) private readonly config: IConfigService) {
-        this.isDebug = this.config.get<boolean>('DEBUG', false);
-    }
-
-    public debug(message: string): void {
-        if (this.isDebug) {
-            console.debug(message);
-        }
-    }
-
-    public info(message: string): void {
-        console.log(message);
-    }
-
-    public warn(message: string): void {
-        console.warn(message);
-    }
-
-    public error(message: string | Error): void {
-        console.error(message);
+export class LoggerService extends WinstonLoggerService {
+    constructor(@Inject(CONFIG_SERVICE) config: ConfigService) {
+        super(config, { useFivemColors: true });
     }
 }

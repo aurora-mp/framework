@@ -1,7 +1,6 @@
 {
 	"extends": "../../../../tsconfig.base.json",
 	"compilerOptions": {
-		"baseUrl": ".",
 		"types": [
 			"./node_modules/@citizenfx/server",
 			"./node_modules/@types/node"

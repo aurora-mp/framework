@@ -1,3 +1,4 @@
+import type { PlayerExtender } from '../player/player-extender';
 import { Token } from '../types';
 import { AuroraPlugin } from './plugin.interface';
 
@@ -33,7 +34,11 @@ export interface IApplication {
      *
      * @returns A promise that resolves once shutdown is complete.
      */
-    close(): Promise<void>;
+    close(signal?: string): Promise<void>;
 
+    /* WIP DO NOT USE: Plugin system is under development and may change in future releases. */
     usePlugins(...plugins: AuroraPlugin[]): this;
+
+    /** Registers a player extender that runs on join and drop. */
+    extendPlayer(extender: PlayerExtender): this;
 }

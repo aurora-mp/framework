@@ -21,4 +21,10 @@ export enum MethodParamType {
      * if the event context provides one.
      */
     PLAYER = 'player',
+
+    /**
+     * Injects the platform-provided source identifier for the event, if available.
+     * FIVEM Only
+    */
+    SOURCE = 'source',
 }

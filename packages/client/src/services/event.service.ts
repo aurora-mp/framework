@@ -1,4 +1,4 @@
-import { Injectable, Inject, PLATFORM_DRIVER } from '@aurora-mp/core';
+import { Injectable, Inject, PLATFORM_DRIVER, encodePlayerRefs } from '@aurora-mp/core';
 import type { IPlatformDriver } from '@aurora-mp/core';
 
 @Injectable()
@@ -11,7 +11,7 @@ export class EventService {
             return;
         }
 
-        this.platformDriver.emit(eventName, ...args);
+        this.platformDriver.emit(eventName, ...encodePlayerRefs(args));
     }
 
     public emitServer(eventName: string, ...args: any[]): void {
@@ -20,6 +20,6 @@ export class EventService {
             return;
         }
 
-        this.platformDriver.emitServer(eventName, ...args);
+        this.platformDriver.emitServer(eventName, ...encodePlayerRefs(args));
     }
 }

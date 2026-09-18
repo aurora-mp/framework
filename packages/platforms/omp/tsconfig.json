@@ -1,7 +1,6 @@
 {
 	"extends": "../../../tsconfig.base.json",
 	"compilerOptions": {
-		"baseUrl": ".",
 		"types": [
 			"./node_modules/@types/node",
 			"./node_modules/@omp-node/core"

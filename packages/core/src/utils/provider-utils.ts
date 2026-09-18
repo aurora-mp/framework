@@ -9,9 +9,9 @@ export type NormalizedProvider<T = unknown> = ClassProvider<T> | ValueProvider<T
 
 /**
  * Takes either:
- *  - a raw Type<T> (class constructor), or
- *  - a Provider<T> object (with useClass/useValue/useFactory)
- * and returns a NormalizedProvider<T> that always has a `provide` property.
+ *  - a raw `Type<T>` (class constructor), or
+ *  - a `Provider<T>` object (with useClass/useValue/useFactory)
+ * and returns a `NormalizedProvider<T>` that always has a `provide` property.
  */
 export function normalizeProvider<T = unknown>(provider: Provider<T> | Type<T>): NormalizedProvider<T> {
     // 1) If a class constructor is passed directly, wrap it as a ClassProvider

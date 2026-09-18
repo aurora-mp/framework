@@ -37,7 +37,7 @@ export const CONTROLLER_RPCS_KEY = Symbol.for('aurora:controller:rpcs');
 /**
  * @internal
  * Unique symbol used as the Reflect metadata key for storing guard classes
- * applied by the @UseGuard decorator on a target (class or method).
+ * applied by the `@UseGuard` decorator on a target (class or method).
  */
 export const GUARDS_METADATA_KEY = Symbol.for('aurora:guards');
 

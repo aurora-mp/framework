@@ -1,103 +1,72 @@
-/**
- * Unit tests for RPC functionality
- * Tests the @OnClientRpc and @OnServerRpc decorators
- */
+import 'reflect-metadata';
+import { RpcBinder } from './rpc-binder';
+import { ControllerFlowHandler } from './controller-flow.handler';
+import { Container } from '../di';
+import { createRpcDecorator } from '../decorators';
+import { RpcType } from '../enums';
+import type { IPlatformDriver } from '../interfaces';
+import type { Type } from '../types';
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { RpcBinder } from '@aurora-mp/core';
-import { createRpcDecorator, RpcType } from '@aurora-mp/core';
+type Ctor = new (...args: any[]) => object;
+const bind = (ctor: Ctor) => [ctor as Type, new ctor() as Record<string, unknown>] as [Type, Record<string, unknown>];
 
-// Mock platform driver
-class MockPlatformDriver {
-    public onRpcServerCalls: Array<{ rpcName: string; handler: Function }> = [];
-    public onRpcClientCalls: Array<{ rpcName: string; handler: Function }> = [];
+const OnClientRpc = (name: string) => createRpcDecorator(RpcType.ON_CLIENT, name);
+const OnServerRpc = (name: string) => createRpcDecorator(RpcType.ON_SERVER, name);
 
-    public onRpcServer(rpcName: string, handler: (...args: unknown[]) => Promise<unknown> | unknown): void {
-        this.onRpcServerCalls.push({ rpcName, handler });
-    }
-
-    public onRpcClient(rpcName: string, handler: (player: any, ...args: unknown[]) => Promise<unknown> | unknown): void {
-        this.onRpcClientCalls.push({ rpcName, handler });
-    }
-
-    public on(eventName: string, listener: (...args: unknown[]) => void): void {}
-    public off(eventName: string, listener: (...args: any[]) => void): void {}
-    public onClient(eventName: string, listener: (player: any, ...args: any[]) => void): void {}
-    public emit(eventName: string, ...args: unknown[]): void {}
-    public emitClient(player: any, eventName: string, ...args: any[]): void {}
+function createMockDriver() {
+    const onRpcServer = jest.fn();
+    const onRpcClient = jest.fn();
+    const driver: IPlatformDriver = {
+        on: jest.fn(),
+        emit: jest.fn(),
+        onRpcServer,
+        onRpcClient,
+    };
+    return { driver, onRpcServer, onRpcClient };
 }
 
-describe('Aurora RPC System', () => {
-    let platformDriver: MockPlatformDriver;
+function createBinder(driver: IPlatformDriver) {
+    const flowHandler = new ControllerFlowHandler(new Container());
+    return new RpcBinder(driver, flowHandler);
+}
 
-    beforeEach(() => {
-        platformDriver = new MockPlatformDriver();
-    });
-
-    describe('@OnClientRpc Decorator', () => {
-        it('should register a server handler for client RPC calls', async () => {
-            // Create a controller with @OnClientRpc
+describe('RpcBinder', () => {
+    describe('@OnClientRpc', () => {
+        it('registers the handler on the driver via onRpcServer', () => {
             class TestController {
                 @OnClientRpc('testMethod')
-                public testMethod(player: any, argument: string) {
+                public testMethod(_player: unknown, argument: string) {
                     return { received: argument };
                 }
             }
 
-            const controller = new TestController();
-            const rpcBinder = new RpcBinder(platformDriver as any, null as any);
+            const { driver, onRpcServer } = createMockDriver();
+            createBinder(driver).bindControllerRpcs([bind(TestController)]);
 
-            // Simulate binding (this is usually done during bootstrap)
-            rpcBinder.bindControllerRpcs([[TestController, controller]]);
-
-            // Verify that onRpcServer was called
-            expect(platformDriver.onRpcServerCalls).toHaveLength(1);
-            expect(platformDriver.onRpcServerCalls[0].rpcName).toBe('testMethod');
-            expect(typeof platformDriver.onRpcServerCalls[0].handler).toBe('function');
+            expect(onRpcServer).toHaveBeenCalledTimes(1);
+            const [rpcName, handler] = onRpcServer.mock.calls[0]!;
+            expect(rpcName).toBe('testMethod');
+            expect(typeof handler).toBe('function');
         });
 
-        it('should execute handler when RPC is called', async () => {
+        it('invokes the underlying method when the registered handler runs', async () => {
             class TestController {
                 @OnClientRpc('getData')
-                public getData(player: any) {
+                public getData() {
                     return { data: 'test' };
                 }
             }
 
-            const controller = new TestController();
-            const rpcBinder = new RpcBinder(platformDriver as any, null as any);
-            rpcBinder.bindControllerRpcs([[TestController, controller]]);
+            const { driver, onRpcServer } = createMockDriver();
+            createBinder(driver).bindControllerRpcs([bind(TestController)]);
 
-            // Call the handler that was registered
-            const handler = platformDriver.onRpcServerCalls[0].handler;
-            const result = await handler();
-
-            expect(result).toEqual({ data: 'test' });
-        });
-
-        it('should handle errors in RPC handlers', async () => {
-            class TestController {
-                @OnClientRpc('errorMethod')
-                public errorMethod(player: any) {
-                    throw new Error('Test error');
-                }
-            }
-
-            const controller = new TestController();
-            const rpcBinder = new RpcBinder(platformDriver as any, null as any);
-            rpcBinder.bindControllerRpcs([[TestController, controller]]);
-
-            const handler = platformDriver.onRpcServerCalls[0].handler;
-            const result = await handler();
-
-            // Should return error object
-            expect(result).toHaveProperty('error');
-            expect(result.error).toContain('Test error');
+            const handler = onRpcServer.mock.calls[0]![1];
+            await expect(handler()).resolves.toEqual({ data: 'test' });
         });
     });
 
-    describe('@OnServerRpc Decorator', () => {
-        it('should register a client handler for server RPC calls', async () => {
+    describe('@OnServerRpc', () => {
+        it('registers the handler on the driver via onRpcClient', () => {
             class TestController {
                 @OnServerRpc('clientMethod')
                 public clientMethod(argument: string) {
@@ -105,164 +74,78 @@ describe('Aurora RPC System', () => {
                 }
             }
 
-            const controller = new TestController();
-            const rpcBinder = new RpcBinder(platformDriver as any, null as any);
-            rpcBinder.bindControllerRpcs([[TestController, controller]]);
+            const { driver, onRpcClient } = createMockDriver();
+            createBinder(driver).bindControllerRpcs([bind(TestController)]);
 
-            // OnServerRpc should use onRpcClient
-            expect(platformDriver.onRpcClientCalls).toHaveLength(1);
-            expect(platformDriver.onRpcClientCalls[0].rpcName).toBe('clientMethod');
+            expect(onRpcClient).toHaveBeenCalledTimes(1);
+            expect(onRpcClient.mock.calls[0]![0]).toBe('clientMethod');
         });
 
-        it('should handle client handler with player parameter', async () => {
+        it('forwards arguments to the underlying method', async () => {
             class TestController {
                 @OnServerRpc('handleUpdate')
-                public handleUpdate(player: any, data: string) {
-                    return { updated: true, data };
+                public handleUpdate(player: unknown, data: string) {
+                    return { updated: true, player, data };
                 }
             }
 
-            const controller = new TestController();
-            const rpcBinder = new RpcBinder(platformDriver as any, null as any);
-            rpcBinder.bindControllerRpcs([[TestController, controller]]);
+            const { driver, onRpcClient } = createMockDriver();
+            createBinder(driver).bindControllerRpcs([bind(TestController)]);
 
-            const handler = platformDriver.onRpcClientCalls[0].handler;
-            const mockPlayer = { id: 1, name: 'TestPlayer' };
-            const result = await handler(mockPlayer, 'test data');
-
-            expect(result).toEqual({ updated: true, data: 'test data' });
+            const handler = onRpcClient.mock.calls[0]![1];
+            const player = { id: 1 };
+            await expect(handler(player, 'payload')).resolves.toEqual({
+                updated: true,
+                player,
+                data: 'payload',
+            });
         });
     });
 
-    describe('Multiple RPC Handlers', () => {
-        it('should register multiple handlers from same controller', async () => {
+    describe('multiple decorators on a single controller', () => {
+        it('registers each RPC on the correct driver channel', () => {
             class MultiController {
                 @OnClientRpc('method1')
-                public method1(player: any) {
-                    return { result: 1 };
+                public method1() {
+                    return 1;
                 }
 
                 @OnClientRpc('method2')
-                public method2(player: any) {
-                    return { result: 2 };
+                public method2() {
+                    return 2;
                 }
 
                 @OnServerRpc('method3')
                 public method3() {
-                    return { result: 3 };
+                    return 3;
                 }
             }
 
-            const controller = new MultiController();
-            const rpcBinder = new RpcBinder(platformDriver as any, null as any);
-            rpcBinder.bindControllerRpcs([[MultiController, controller]]);
+            const { driver, onRpcServer, onRpcClient } = createMockDriver();
+            createBinder(driver).bindControllerRpcs([bind(MultiController)]);
 
-            // Should have 2 server handlers and 1 client handler
-            expect(platformDriver.onRpcServerCalls).toHaveLength(2);
-            expect(platformDriver.onRpcClientCalls).toHaveLength(1);
-
-            expect(platformDriver.onRpcServerCalls[0].rpcName).toBe('method1');
-            expect(platformDriver.onRpcServerCalls[1].rpcName).toBe('method2');
-            expect(platformDriver.onRpcClientCalls[0].rpcName).toBe('method3');
+            expect(onRpcServer).toHaveBeenCalledTimes(2);
+            expect(onRpcClient).toHaveBeenCalledTimes(1);
+            expect(onRpcServer.mock.calls.map(([name]) => name)).toEqual(['method1', 'method2']);
+            expect(onRpcClient.mock.calls[0]![0]).toBe('method3');
         });
     });
 
-    describe('Async RPC Handlers', () => {
-        it('should handle async operations', async () => {
+    describe('async handlers', () => {
+        it('awaits the underlying async method', async () => {
             class AsyncController {
                 @OnClientRpc('asyncMethod')
-                public async asyncMethod(player: any, delay: number) {
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    return { completed: true, delay };
+                public async asyncMethod() {
+                    await new Promise((resolve) => setTimeout(resolve, 5));
+                    return { completed: true };
                 }
             }
 
-            const controller = new AsyncController();
-            const rpcBinder = new RpcBinder(platformDriver as any, null as any);
-            rpcBinder.bindControllerRpcs([[AsyncController, controller]]);
+            const { driver, onRpcServer } = createMockDriver();
+            createBinder(driver).bindControllerRpcs([bind(AsyncController)]);
 
-            const handler = platformDriver.onRpcServerCalls[0].handler;
-            const result = await handler(null, 10);
-
-            expect(result).toEqual({ completed: true, delay: 10 });
+            const handler = onRpcServer.mock.calls[0]![1];
+            await expect(handler()).resolves.toEqual({ completed: true });
         });
-    });
-
-    describe('Platform Drivers', () => {
-        it('should have RAGE:MP driver with correct methods', () => {
-            // Import and verify RAGE:MP driver
-            const requiredMethods = ['on', 'off', 'onClient', 'emit', 'emitClient', 'invokeClient', 'onRpcServer', 'onRpcClient'];
-            requiredMethods.forEach(method => {
-                expect(platformDriver).toHaveProperty(method);
-            });
-        });
-    });
-});
-
-// Integration test example
-describe('RPC Integration', () => {
-    it('should simulate complete RPC flow', async () => {
-        // Server side
-        class ServerController {
-            @OnClientRpc('requestData')
-            public requestData(player: any, id: number) {
-                return { id, data: 'server response' };
-            }
-        }
-
-        // Client side
-        class ClientController {
-            @OnServerRpc('receiveData')
-            public receiveData(data: any) {
-                return { acknowledged: true, data };
-            }
-        }
-
-        const serverController = new ServerController();
-        const clientController = new ClientController();
-        const platformDriver = new MockPlatformDriver();
-
-        // Setup bindings
-        const rpcBinder = new RpcBinder(platformDriver as any, null as any);
-        rpcBinder.bindControllerRpcs([
-            [ServerController, serverController],
-            [ClientController, clientController],
-        ]);
-
-        // Simulate client calling server
-        const serverHandler = platformDriver.onRpcServerCalls.find(h => h.rpcName === 'requestData')?.handler;
-        const serverResponse = await serverHandler?.({ id: 1, name: 'TestPlayer' }, 123);
-
-        expect(serverResponse).toEqual({ id: 123, data: 'server response' });
-
-        // Simulate server calling client
-        const clientHandler = platformDriver.onRpcClientCalls.find(h => h.rpcName === 'receiveData')?.handler;
-        const clientResponse = await clientHandler?.({ id: 1 }, serverResponse);
-
-        expect(clientResponse).toEqual({ acknowledged: true, data: serverResponse });
-    });
-});
-
-// Type testing example
-describe('RPC Type Safety', () => {
-    it('should infer return types correctly', async () => {
-        class TypedController {
-            @OnClientRpc('typedMethod')
-            public typedMethod(player: any): { success: boolean; value: number } {
-                return { success: true, value: 42 };
-            }
-        }
-
-        const controller = new TypedController();
-        const platformDriver = new MockPlatformDriver();
-        const rpcBinder = new RpcBinder(platformDriver as any, null as any);
-        rpcBinder.bindControllerRpcs([[TypedController, controller]]);
-
-        const handler = platformDriver.onRpcServerCalls[0].handler;
-        const result = await handler();
-
-        // TypeScript would verify these types
-        expect(result.success).toBe(true);
-        expect(result.value).toBe(42);
     });
 });

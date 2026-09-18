@@ -1,0 +1,34 @@
+{
+    "name": "@aurora-mp/platform-fivem-client",
+    "version": "0.0.1-alpha.7",
+    "description": "Aurora platform driver implementation for FiveM client-side runtime.",
+    "license": "MIT",
+    "author": "Aurora Team",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/aurora-mp/framework.git",
+        "directory": "packages/platforms/fivem/client"
+    },
+    "publishConfig": {
+        "access": "public",
+        "registry": "https://registry.npmjs.org/"
+    },
+    "scripts": {
+        "build": "tsup"
+    },
+    "devDependencies": {
+        "@types/node": "^25.0.3",
+        "tsup": "^8.5.1"
+    },
+    "dependencies": {
+        "@aurora-mp/core": "workspace:*",
+        "@aurora-mp/client": "workspace:*",
+        "@citizenfx/client": "^2.0.23683-1"
+    }
+}

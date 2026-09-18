@@ -1,4 +1,4 @@
-import { Type } from '@core/types';
+import { Type } from '../types';
 
 /**
  * Provides contextual information for a controller event invocation.
@@ -29,6 +29,9 @@ export interface ExecutionContext {
      * in the platform event context.
      */
     readonly player?: unknown;
+
+    /** Platform source id, if available. */
+    readonly source?: number;
 
     /**
      * Returns the class (i.e. controller or provider) that defines the current handler.

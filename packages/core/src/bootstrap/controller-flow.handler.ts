@@ -1,7 +1,7 @@
 import { EventMetadata, RpcMetadata, Type } from '../types';
 import { ExecutionContext, Guard, ILogger, MethodParameter } from '../interfaces';
 import { MethodParamType } from '../enums';
-import { GUARDS_METADATA_KEY } from '../constants';
+import { GUARDS_METADATA_KEY, LOGGER_SERVICE } from '../constants';
 import { Container } from '../di';
 
 /**
@@ -11,18 +11,16 @@ import { Container } from '../di';
  * - Invokes the decorated method on the instance
  */
 export class ControllerFlowHandler {
-    private logger: ILogger = console;
-
     constructor(private readonly container: Container) {}
 
-    public setLogger(logger: ILogger) {
-        this.logger = logger;
+    public get logger(): ILogger {
+        return this.container.has(LOGGER_SERVICE) ? this.container.resolve<ILogger>(LOGGER_SERVICE) : console;
     }
 
     /**
      * Maps the ExecutionContext to an array of arguments for the controller method.
      * @param context The current execution context containing raw arguments.
-     * @param event Metadata for the event handler including parameter definitions.
+     * @param handler Metadata for the event handler including parameter definitions.
      * @returns An array of arguments to apply to the controller method.
      */
     public createArgs(context: ExecutionContext, handler: EventMetadata | RpcMetadata): unknown[] {
@@ -32,13 +30,22 @@ export class ControllerFlowHandler {
 
         const sorted: MethodParameter[] = [...handler.params].sort((a, b) => a.index - b.index);
         const rawArgs = context.args;
-        const args: unknown[] = [];
+        const decoratedIndices = new Set(sorted.map((p) => p.index));
+        const outOfBandCount = sorted.filter((p) => p.type === MethodParamType.SOURCE).length;
+        const highestDecoratedIndex = sorted.length ? sorted[sorted.length - 1]!.index : -1;
+        const totalSlots = Math.max(highestDecoratedIndex + 1, rawArgs.length + outOfBandCount);
+        const args: unknown[] = new Array(totalSlots);
+        let rawIdx = 0;
+        for (let i = 0; i < totalSlots; i++) {
+            if (decoratedIndices.has(i)) continue;
+            if (rawIdx < rawArgs.length) args[i] = rawArgs[rawIdx++];
+        }
 
         for (const param of sorted) {
             let value: unknown;
             switch (param.type) {
                 case MethodParamType.PLAYER:
-                    value = param.data ? (rawArgs[0] as any)?.[param.data] : rawArgs[0];
+                    value = param.data ? (context.player as any)?.[param.data] : context.player;
                     break;
 
                 case MethodParamType.PAYLOAD:
@@ -64,6 +71,10 @@ export class ControllerFlowHandler {
                     } else {
                         value = rawArgs[param.index];
                     }
+                    break;
+
+                case MethodParamType.SOURCE:
+                    value = context.source;
                     break;
 
                 default:
@@ -92,8 +103,6 @@ export class ControllerFlowHandler {
                 this.logger.debug(`[Aurora] Access denied by ${guard.name} on ${targetClass.name}.${handler.name}`);
                 return false;
             }
-
-            this.logger.debug(`[Aurora] Guard ${guard.name} granted access.`);
         }
 
         return true;

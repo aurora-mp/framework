@@ -28,19 +28,19 @@
 		"stripInternal": true,
 		"paths": {
 			"@client/*": [
-				"packages/client/src/*"
+				"./packages/client/src/*"
 			],
 			"@core/*": [
-				"packages/core/src/*"
+				"./packages/core/src/*"
 			],
 			"@server/*": [
-				"packages/server/src/*"
+				"./packages/server/src/*"
 			],
 			"@shared/*": [
-				"gamemode/shared/src/*"
+				"./gamemode/shared/src/*"
 			],
 			"@webview/*": [
-				"packages/webview/src/*"
+				"./packages/webview/src/*"
 			]
 		}
 	}

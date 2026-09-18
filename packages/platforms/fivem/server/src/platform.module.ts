@@ -1,5 +1,5 @@
 import { Global, Module, LOGGER_SERVICE, PLATFORM_DRIVER, CONFIG_LOADER } from '@aurora-mp/core';
-import { LoggerService, RageConfigLoader } from './services/';
+import { ConfigLoader, LoggerService } from './services/';
 import { FiveMServerDriver } from './driver';
 
 /**
@@ -17,7 +17,7 @@ import { FiveMServerDriver } from './driver';
     providers: [
         {
             provide: CONFIG_LOADER,
-            useClass: RageConfigLoader,
+            useClass: ConfigLoader,
         },
         {
             provide: LOGGER_SERVICE,
