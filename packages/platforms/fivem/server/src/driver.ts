@@ -195,6 +195,25 @@ export class FiveMServerDriver implements IPlatformDriver<number> {
         }
     }
 
+    public getPlayerArmor(source: number): number | undefined {
+        const ped = this.getPlayerPed(source);
+        if (ped === undefined || ped === 0) return undefined;
+        try {
+            return GetPedArmour(ped);
+        } catch {
+            return undefined;
+        }
+    }
+
+    public setPlayerArmor(source: number, value: number): void {
+        const ped = this.getPlayerPed(source);
+        if (ped === undefined || ped === 0) return;
+        try {
+            SetPedArmour(ped, value);
+        } catch {
+        }
+    }
+
     public setPlayerVariable(source: number, key: string, value: unknown): void {
         const player = normalizePlayer(source);
         if (player === undefined) return;

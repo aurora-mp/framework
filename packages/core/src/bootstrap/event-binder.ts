@@ -1,6 +1,7 @@
 import { EventType } from '../enums';
 import { CONTROLLER_EVENTS_KEY, CONTROLLER_PARAMS_KEY, GUARDS_METADATA_KEY } from '../constants';
 import type { ExecutionContext, ILogger, IPlatformDriver } from '../interfaces';
+import { decodePlayerRefs } from '../player/player-entity-ref';
 import { PlayerRegistry } from '../player/player-registry';
 import { EventMetadata, Type } from '../types';
 import { ControllerFlowHandler } from './controller-flow.handler';
@@ -12,13 +13,15 @@ import { ControllerFlowHandler } from './controller-flow.handler';
  * @public
  */
 export class EventBinder {
-    private logger: ILogger = console;
-
     constructor(
         private readonly platformDriver: IPlatformDriver,
         private readonly flowHandler: ControllerFlowHandler,
         private readonly playerRegistry?: PlayerRegistry,
     ) {}
+
+    private get logger(): ILogger {
+        return this.flowHandler.logger;
+    }
 
     /**
      * Binds all controller event handlers for a given set of modules/controllers.
@@ -87,9 +90,10 @@ export class EventBinder {
         instance: Record<string, unknown>,
         handler: EventMetadata,
     ): (...args: unknown[]) => Promise<void> {
-        return async (...args: unknown[]) => {
+        return async (...rawArgs: unknown[]) => {
             const capturedSource = this.platformDriver.getInvocationSource?.();
             try {
+                const args = decodePlayerRefs(rawArgs, this.playerRegistry);
                 const wrappedPlayer =
                     capturedSource !== undefined ? this.playerRegistry?.get(capturedSource) : undefined;
                 const contextPlayer =

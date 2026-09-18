@@ -11,10 +11,10 @@ import { Container } from '../di';
  * - Invokes the decorated method on the instance
  */
 export class ControllerFlowHandler {
-    private logger: ILogger = console;
-    
-    constructor(private readonly container: Container) {
-      this.logger = this.container.resolve<ILogger>(LOGGER_SERVICE);
+    constructor(private readonly container: Container) {}
+
+    public get logger(): ILogger {
+        return this.container.has(LOGGER_SERVICE) ? this.container.resolve<ILogger>(LOGGER_SERVICE) : console;
     }
 
     /**
@@ -103,8 +103,6 @@ export class ControllerFlowHandler {
                 this.logger.debug(`[Aurora] Access denied by ${guard.name} on ${targetClass.name}.${handler.name}`);
                 return false;
             }
-
-            this.logger.debug(`[Aurora] Guard ${guard.name} granted access.`);
         }
 
         return true;

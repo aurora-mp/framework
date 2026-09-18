@@ -296,9 +296,17 @@ export class ApplicationFactory {
             }
         }
 
+        // The constructor pre-registers LOGGER_SERVICE with a raw console
+        // placeholder (see below) so early collaborators like
+        // ControllerFlowHandler have something usable. resolveDependency
+        // caches by token and would just hand that placeholder back, so
+        // discard it here to force a real resolution against the module
+        // providers (e.g. the platform module's winston-backed LoggerService).
+        this.instanceContainer.delete(LOGGER_SERVICE);
         try {
             this.logger = (await this.resolveDependency(LOGGER_SERVICE, rootModule)) as ILogger;
         } catch {
+            this.instanceContainer.register(LOGGER_SERVICE, console);
             this.logger.warn(`[Aurora] LOGGER_SERVICE not found. Falling back to console logging.`);
         }
     }

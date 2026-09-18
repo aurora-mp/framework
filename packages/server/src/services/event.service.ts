@@ -1,4 +1,4 @@
-import { Injectable, Inject, PLATFORM_DRIVER, WebViewEvents } from '@aurora-mp/core';
+import { Injectable, Inject, PLATFORM_DRIVER, WebViewEvents, encodePlayerRefs } from '@aurora-mp/core';
 import type { IPlatformDriver } from '@aurora-mp/core';
 
 /**
@@ -33,7 +33,7 @@ export class EventService<TPlayer = any> {
             console.warn('[Aurora] Warning: The current platform driver does not support emit.');
             return;
         }
-        this.platformDriver.emit(eventName, ...args);
+        this.platformDriver.emit(eventName, ...encodePlayerRefs(args));
     }
 
     /**
@@ -48,7 +48,7 @@ export class EventService<TPlayer = any> {
             console.warn('[Aurora] Warning: The current platform driver does not support emitClient.');
             return;
         }
-        this.platformDriver.emitClient(player, eventName, ...args);
+        this.platformDriver.emitClient(player, eventName, ...encodePlayerRefs(args));
     }
 
     /**
@@ -70,6 +70,6 @@ export class EventService<TPlayer = any> {
             return;
         }
         // Dispatch via the WebViewEvents.DISPATCH channel
-        this.platformDriver.emitClient(player, WebViewEvents.DISPATCH, webviewId, eventName, ...args);
+        this.platformDriver.emitClient(player, WebViewEvents.DISPATCH, webviewId, eventName, ...encodePlayerRefs(args));
     }
 }

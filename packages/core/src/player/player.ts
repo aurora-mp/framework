@@ -89,6 +89,14 @@ export class PlayerEntity<TNative = unknown> {
         this.driver.setPlayerHealth?.(this.source, value);
     }
 
+    /** Current armor. */
+    public get armor(): number | undefined {
+        return this.driver.getPlayerArmor?.(this.source);
+    }
+    public set armor(value: number) {
+        this.driver.setPlayerArmor?.(this.source, value);
+    }
+
     /**
      * Stores an arbitrary key/value pair on the platform's replicated player
      * variable store. Mirrors RAGE-MP's `player.setVariable` API.

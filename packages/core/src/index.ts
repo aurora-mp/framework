@@ -19,10 +19,14 @@ export {
     PlayerComponent,
     PLAYER_COMPONENT_METADATA_KEY,
     isPlayerComponent,
+    encodePlayerRefs,
+    decodePlayerRefs,
+    isPlayerEntityRef,
 } from './player';
 export type {
     PlayerComponentCtor,
     IPlayerComponent,
     PlayerExtender,
     ComponentFactory,
+    PlayerEntityRef,
 } from './player';

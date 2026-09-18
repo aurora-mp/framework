@@ -52,6 +52,17 @@ export class Container {
     }
 
     /**
+     * Removes a registered provider, if any. Used to discard bootstrap
+     * placeholders so a later resolution is forced to go through the real
+     * module-provider lookup instead of returning the cached placeholder.
+     *
+     * @param token The injection token to remove.
+     */
+    public delete<T>(token: Token<T>): void {
+        this.providers.delete(token);
+    }
+
+    /**
      * Returns an iterator over all registered provider instances.
      * Can be used for debugging or lifecycle management.
      *

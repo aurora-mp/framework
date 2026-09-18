@@ -17,7 +17,7 @@ type ConfigService = {
 /**
  * Shared {@link ILogger} implementation backed by Winston. Each server
  * platform driver instantiates a subclass (or provides this class directly)
- * with its own {@link AuroraWinstonLoggerOptions.label}.
+ * with its own {@link AuroraWinstonLoggerOptions}.
  *
  * @public
  */

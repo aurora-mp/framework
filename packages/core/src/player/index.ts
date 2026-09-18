@@ -1,5 +1,8 @@
 export { PlayerEntity } from './player';
 
+export { encodePlayerRefs, decodePlayerRefs, isPlayerEntityRef } from './player-entity-ref';
+export type { PlayerEntityRef } from './player-entity-ref';
+
 export {
     PLAYER_COMPONENT_METADATA_KEY,
     PlayerComponent,

@@ -1,3 +1,4 @@
+import { colorizeFivemLevel } from '@aurora-mp/core';
 import { addColors, createLogger, format, transports, type Logger } from 'winston';
 
 const LEVEL_SYMBOL = Symbol.for('level');
@@ -42,19 +43,6 @@ addColors({
 });
 
 /**
- * FiveM's fxserver console uses Quake-style color codes (`^0`-`^9`) rather
- * than ANSI escape sequences. When `useFivemColors` is enabled we emit those
- * so the output actually renders colored inside the FiveM console.
- */
-const FIVEM_LEVEL_COLORS: Record<string, string> = {
-    error: '^1',
-    warn: '^3',
-    info: '^5',
-    debug: '^6',
-};
-const FIVEM_RESET = '^7';
-
-/**
  * Options accepted by {@link createAuroraWinstonLogger}.
  *
  * @public
@@ -62,12 +50,6 @@ const FIVEM_RESET = '^7';
 export interface AuroraWinstonLoggerOptions {
     /** Initial level. Defaults to `'info'`. */
     readonly level?: string;
-    /**
-     * Label prepended to each log line, typically the platform name
-     * (e.g. `'fivem-server'`, `'ragemp-server'`). When omitted, no label is
-     * added.
-     */
-    readonly label?: string;
     /** Enable colors on the console transport. Defaults to `true`. */
     readonly colors?: boolean;
     /**
@@ -85,25 +67,20 @@ export interface AuroraWinstonLoggerOptions {
  * @public
  */
 export function createAuroraWinstonLogger(options: AuroraWinstonLoggerOptions = {}): Logger {
-    const { level = 'info', label, colors = true, useFivemColors = false } = options;
+    const { level = 'info', colors = true, useFivemColors = false } = options;
 
     const consoleFormat = format.combine(
-        format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
-        ...(label ? [format.label({ label })] : []),
         format.errors({ stack: true }),
         format.splat(),
         ...(colors && !useFivemColors ? [format.colorize({ all: true })] : []),
         format.printf((info) => {
-            const time = info['timestamp'] ?? '';
-            const lbl = info['label'] ? ` [${info['label']}]` : '';
             const msg = info['stack'] ?? info.message;
 
             if (colors && useFivemColors) {
-                const code = FIVEM_LEVEL_COLORS[info.level] ?? FIVEM_RESET;
-                return `${time}${lbl} ${code}${info.level}${FIVEM_RESET}: ${code}${msg}${FIVEM_RESET}`;
+                return `${colorizeFivemLevel(info.level, info.level)}: ${colorizeFivemLevel(info.level, String(msg))}`;
             }
 
-            return `${time}${lbl} ${info.level}: ${msg}`;
+            return `${info.level}: ${msg}`;
         }),
     );
 

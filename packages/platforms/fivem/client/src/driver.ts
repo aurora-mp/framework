@@ -55,7 +55,8 @@ class FiveMNUIWebView implements IWebView {
 
     public emit(event: string, ...args: unknown[]): void {
         if (this.disposed) return;
-        SendNUIMessage({ type: 'aurora:emit', id: this.id, event, args });
+        // SendNUIMessage(obj) mangles non-ASCII text (accents, etc); stringify manually instead.
+        SendNuiMessage(JSON.stringify({ type: 'aurora:emit', id: this.id, event, args }));
     }
 
     public invoke<T = unknown>(event: string, ...args: unknown[]): Promise<T> {
@@ -83,7 +84,7 @@ class FiveMNUIWebView implements IWebView {
             });
 
             try {
-                SendNUIMessage({ type: 'aurora:invoke', id: this.id, reqId, event, args });
+                SendNuiMessage(JSON.stringify({ type: 'aurora:invoke', id: this.id, reqId, event, args }));
             } catch (err) {
                 this.pending.delete(reqId);
                 clearTimeout(timer);

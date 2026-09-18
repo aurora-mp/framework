@@ -6,13 +6,15 @@ import { RpcMetadata, Type } from '../types';
 import { ControllerFlowHandler } from './controller-flow.handler';
 
 export class RpcBinder {
-    logger: ILogger = console;
-    
     constructor(
         private readonly platformDriver: IPlatformDriver,
         private readonly flowHandler: ControllerFlowHandler,
         private readonly playerRegistry?: PlayerRegistry,
     ) {}
+
+    private get logger(): ILogger {
+        return this.flowHandler.logger;
+    }
 
     public bindControllerRpcs(controllers: [Type, Record<string, unknown>][]) {
         for (const [controllerType, controllerInstance] of controllers) {

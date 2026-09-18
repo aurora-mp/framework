@@ -275,6 +275,16 @@ export interface IPlatformDriver<TPlayer = unknown> {
     setPlayerHealth?(source: number, health: number): void;
 
     /**
+     * Reads the player's current armor. Backs `PlayerEntity.armor` getter.
+     */
+    getPlayerArmor?(source: number): number | undefined;
+
+    /**
+     * Sets the player's armor. Backs `PlayerEntity.armor` setter.
+     */
+    setPlayerArmor?(source: number, value: number): void;
+
+    /**
      * Stores an arbitrary key/value pair replicated to the player's client.
      * Modelled after RAGE-MP's `player.setVariable`; FiveM drivers may back
      * this with statebags. Backs `PlayerEntity.setVariable`.
